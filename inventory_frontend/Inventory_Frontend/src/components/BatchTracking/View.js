@@ -1,14 +1,29 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Grid,
   Typography,
   Chip,
 } from "@mui/material";
+import { fetchItems } from '../../lib/itemApi';
 
 const ViewBatch = ({ batchData }) => {
+  const [products, setProducts] = useState([]);
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const response = await fetchItems(1, 100);
+        setProducts(response.data || []);
+      } catch (error) {
+        console.error('Failed to fetch products:', error);
+      }
+    };
+    loadProducts();
+  }, []);
+
   const getStatusColor = (status) => {
     switch (status) {
       case "Active":
@@ -21,14 +36,8 @@ const ViewBatch = ({ batchData }) => {
   };
 
   const getProductName = (productId) => {
-    const products = [
-      { id: 'PROD001', name: 'Samsung Galaxy S24' },
-      { id: 'PROD002', name: 'Dell Inspiron 15' },
-      { id: 'PROD003', name: 'Office Chair' },
-      { id: 'PROD004', name: 'Coffee Mug' }
-    ];
-    const product = products.find(p => p.id === productId);
-    return product ? product.name : 'Unknown';
+    const product = products.find(p => p.id === productId || p.productId === productId);
+    return product ? (product.productName || product.name) : (batchData?.productName || 'Unknown');
   };
 
   return (

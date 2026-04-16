@@ -14,6 +14,9 @@ import {
   Divider,
 } from "@mui/material";
 import { Add, Delete } from "@mui/icons-material";
+import { fetchCustomers } from '../../lib/customerApi';
+import { fetchSuppliers } from '../../lib/supplierApi';
+import { fetchItems } from '../../lib/itemApi';
 
 const EditInvoice = ({ editData, handleUpdate, handleClose }) => {
   const [formData, setFormData] = useState({
@@ -38,11 +41,29 @@ const EditInvoice = ({ editData, handleUpdate, handleClose }) => {
     notes: ""
   });
 
-  const customers = ["Tech Solutions Pvt Ltd", "Office Supplies Co", "Retail Store Chain", "Manufacturing Corp", "Service Provider Ltd"];
-  const suppliers = ["Electronics Hub", "Furniture World", "Kitchen Supplies", "Office Depot", "Industrial Supplies"];
-  const products = ["Samsung Galaxy S24", "Office Chair", "Coffee Mug", "LED TV", "Wireless Mouse", "Keyboard", "Desk Lamp", "Tea Set"];
+  const [customers, setCustomers] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [products, setProducts] = useState([]);
   const paymentTerms = ["Net 7", "Net 15", "Net 30", "Net 45", "Net 60"];
   const statuses = ["Paid", "Pending", "Overdue"];
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [customersRes, suppliersRes, productsRes] = await Promise.all([
+          fetchCustomers(),
+          fetchSuppliers(),
+          fetchItems(1, 100)
+        ]);
+        setCustomers(customersRes.data || []);
+        setSuppliers(suppliersRes.data || []);
+        setProducts(productsRes.data || []);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+      }
+    };
+    loadData();
+  }, []);
 
   useEffect(() => {
     if (editData) {
@@ -234,8 +255,8 @@ const EditInvoice = ({ editData, handleUpdate, handleClose }) => {
             onChange={handleChange}
           >
             {customers.map((customer) => (
-              <MenuItem key={customer} value={customer}>
-                {customer}
+              <MenuItem key={customer.id || customer._id || customer.customerName} value={customer.customerName || customer.name}>
+                {customer.customerName || customer.name}
               </MenuItem>
             ))}
           </Select>
@@ -290,8 +311,8 @@ const EditInvoice = ({ editData, handleUpdate, handleClose }) => {
             onChange={handleChange}
           >
             {suppliers.map((supplier) => (
-              <MenuItem key={supplier} value={supplier}>
-                {supplier}
+              <MenuItem key={supplier.id || supplier._id || supplier.supplierName} value={supplier.supplierName || supplier.name}>
+                {supplier.supplierName || supplier.name}
               </MenuItem>
             ))}
           </Select>
@@ -358,8 +379,8 @@ const EditInvoice = ({ editData, handleUpdate, handleClose }) => {
                 onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
               >
                 {products.map((product) => (
-                  <MenuItem key={product} value={product}>
-                    {product}
+                  <MenuItem key={product.id || product._id} value={product.productName || product.name}>
+                    {product.productName || product.name}
                   </MenuItem>
                 ))}
               </Select>

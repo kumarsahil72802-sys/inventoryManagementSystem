@@ -644,8 +644,8 @@ export default function InvoicePage() {
       <CommonDialog
         open={viewShow}
         onClose={handleClose}
-        title="Invoice Details"
-        content={<ViewInvoice viewData={viewData} handleClose={handleClose} />}
+        dialogTitle="Invoice Details"
+        dialogContent={<ViewInvoice viewData={viewData} handleClose={handleClose} />}
         maxWidth="md"
         fullWidth
       />
@@ -653,8 +653,8 @@ export default function InvoicePage() {
       <CommonDialog
         open={editShow}
         onClose={handleClose}
-        title="Edit Invoice"
-        content={<EditInvoice editData={editData} handleUpdate={handleUpdate} handleClose={handleClose} />}
+        dialogTitle="Edit Invoice"
+        dialogContent={<EditInvoice editData={editData} handleUpdate={handleUpdate} handleClose={handleClose} />}
         maxWidth="lg"
         fullWidth
       />
@@ -662,8 +662,8 @@ export default function InvoicePage() {
       <CommonDialog
         open={deleteShow}
         onClose={handleClose}
-        title="Delete Invoice"
-        content={<DeleteInvoice deleteData={deleteData} handleDelete={handleDelete} handleClose={handleClose} />}
+        dialogTitle="Delete Invoice"
+        dialogContent={<DeleteInvoice deleteData={deleteData} handleDelete={handleDelete} handleClose={handleClose} />}
         maxWidth={deleteShow ? "sm" : "md"}
         fullWidth={deleteShow ? false : true}
       />
@@ -671,8 +671,8 @@ export default function InvoicePage() {
       <CommonDialog
         open={createShow}
         onClose={handleClose}
-        title="Add Invoice"
-        content={<CreateInvoice handleClose={handleClose} handleCreate={handleCreate} />}
+        dialogTitle="Add Invoice"
+        dialogContent={<CreateInvoice handleClose={handleClose} handleCreate={handleCreate} />}
         maxWidth="lg"
         fullWidth
       />

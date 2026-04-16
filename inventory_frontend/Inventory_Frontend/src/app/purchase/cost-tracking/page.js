@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   IconButton,
   Typography,
@@ -18,19 +18,19 @@ import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
 import EditOutlined from "@mui/icons-material/EditOutlined";
 import VisibilityOutlined from "@mui/icons-material/VisibilityOutlined";
 import CommonDialog from "@/components/CommonDialog";
-import CreateCostTracking from "@/components/Purchase Management/Cost Tracking/Create";
-import ViewCostTracking from "@/components/Purchase Management/Cost Tracking/View";
-import EditCostTracking from "@/components/Purchase Management/Cost Tracking/Edit";
-import DeleteCostTracking from "@/components/Purchase Management/Cost Tracking/Delete";
+import CreateCostTracking from "@/components/purchase-management/Cost Tracking/Create";
+import ViewCostTracking from "@/components/purchase-management/Cost Tracking/View";
+import EditCostTracking from "@/components/purchase-management/Cost Tracking/Edit";
+import DeleteCostTracking from "@/components/purchase-management/Cost Tracking/Delete";
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
+import { getAllCostTracking, createCostTracking, updateCostTracking, deleteCostTracking } from '@/lib/purchaseApi';
+import { CircularProgress, Alert } from '@mui/material';
 
 export default function CostTrackingTable() {
-  const [rows, setRows] = useState([
-    createData(1, "CT001", "2024-01-15", "ABC Suppliers", "Laptop Pro 15", 50000, 48000, "Decreased"),
-    createData(2, "CT002", "2024-01-16", "XYZ Electronics", "Office Chair", 3000, 3200, "Increased"),
-    createData(3, "CT003", "2024-01-17", "Tech Solutions", "LED TV 43", 22000, 21000, "Decreased"),
-  ]);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [viewShow, setViewShow] = useState(false);
   const [editShow, setEditShow] = useState(false);
@@ -46,6 +46,29 @@ export default function CostTrackingTable() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  // Fetch cost tracking records on component mount
+  useEffect(() => {
+    const fetchCostTracking = async () => {
+      try {
+        setLoading(true);
+        const response = await getAllCostTracking();
+        const fetchedData = Array.isArray(response?.data) ? response.data :
+                           (Array.isArray(response) ? response : []);
+        setRows(fetchedData.map((record, index) => ({
+          ...record,
+          si: index + 1
+        })));
+        setError(null);
+      } catch (err) {
+        setError(err?.response?.data?.message || err.message || 'Failed to fetch cost tracking records');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCostTracking();
+  }, []);
 
   function createData(si, trackingId, date, supplierName, productName, oldPrice, newPrice, changeType) {
     return {
@@ -65,43 +88,58 @@ export default function CostTrackingTable() {
   const handleCreateOpen = () => setCreateShow(true);
   const handleClose = () => { setViewShow(false); setEditShow(false); setDeleteShow(false); setCreateShow(false); };
 
-  const handleCreate = (newTracking) => {
-    const nextSi = rows.length + 1;
-    const newRow = createData(
-      nextSi,
-      newTracking.trackingId,
-      newTracking.date,
-      newTracking.supplierName,
-      newTracking.productName,
-      newTracking.oldPrice,
-      newTracking.newPrice,
-      newTracking.changeType
-    );
-    setRows([...rows, newRow]);
+  const handleCreate = async (newTracking) => {
+    try {
+      await createCostTracking(newTracking);
+      
+      // Refresh the cost tracking list
+      const response = await getAllCostTracking();
+      const fetchedData = Array.isArray(response?.data) ? response.data :
+                         (Array.isArray(response) ? response : []);
+      setRows(fetchedData.map((record, index) => ({
+        ...record,
+        si: index + 1
+      })));
+      handleClose();
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to create cost tracking record');
+    }
   };
 
-  const handleUpdate = (updatedTracking) => {
-    setRows(rows.map(row =>
-      row.si === updatedTracking.si
-        ? createData(
-            row.si,
-            updatedTracking.trackingId,
-            updatedTracking.date,
-            updatedTracking.supplierName,
-            updatedTracking.productName,
-            updatedTracking.oldPrice,
-            updatedTracking.newPrice,
-            updatedTracking.changeType
-          )
-        : row
-    ));
+  const handleUpdate = async (updatedTracking) => {
+    try {
+      await updateCostTracking(updatedTracking._id || updatedTracking.id, updatedTracking);
+      
+      // Refresh the cost tracking list
+      const response = await getAllCostTracking();
+      const fetchedData = Array.isArray(response?.data) ? response.data :
+                         (Array.isArray(response) ? response : []);
+      setRows(fetchedData.map((record, index) => ({
+        ...record,
+        si: index + 1
+      })));
+      handleClose();
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to update cost tracking record');
+    }
   };
 
-  const handleDelete = () => {
-    setRows(rows.filter(row => row.trackingId !== deleteId));
-    setDeleteShow(false);
-    setDeleteData(null);
-    setDeleteId(null);
+  const handleDelete = async () => {
+    try {
+      await deleteCostTracking(deleteData._id || deleteData.id);
+      
+      // Refresh the cost tracking list
+      const response = await getAllCostTracking();
+      const fetchedData = Array.isArray(response?.data) ? response.data :
+                         (Array.isArray(response) ? response : []);
+      setRows(fetchedData.map((record, index) => ({
+        ...record,
+        si: index + 1
+      })));
+      handleClose();
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to delete cost tracking record');
+    }
   };
 
   const handlePageChange = (event, newPage) => {
@@ -115,6 +153,22 @@ export default function CostTrackingTable() {
   );
 
   const currentData = filteredRows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
 
   return (
     <div className="content-area">

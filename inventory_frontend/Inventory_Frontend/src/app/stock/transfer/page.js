@@ -19,10 +19,10 @@ import {
 } from "@mui/material";
 import { Search, Add, VisibilityOutlined, EditOutlined, DeleteOutlined } from "@mui/icons-material";
 import CommonDialog from '../../../components/CommonDialog';
-import CreateStockTransfer from '../../../components/Stock Management/StockTransfer/Create';
-import EditStockTransfer from '../../../components/Stock Management/StockTransfer/Edit';
-import ViewStockTransfer from '../../../components/Stock Management/StockTransfer/View';
-import DeleteStockTransfer from '../../../components/Stock Management/StockTransfer/Delete';
+import CreateStockTransfer from '../../../components/stock-management-main/StockTransfer/Create';
+import EditStockTransfer from '../../../components/stock-management-main/StockTransfer/Edit';
+import ViewStockTransfer from '../../../components/stock-management-main/StockTransfer/View';
+import DeleteStockTransfer from '../../../components/stock-management-main/StockTransfer/Delete';
 import { fetchStockTransfers, createStockTransfer, updateStockTransfer, deleteStockTransfer } from '@/lib/stockApi';
 import { fetchItems } from '@/lib/itemApi';
 import { fetchWarehouses } from '@/lib/warehouseApi';

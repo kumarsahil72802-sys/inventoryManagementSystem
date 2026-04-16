@@ -6,6 +6,10 @@ export const getAllExpenses = async () => {
     const response = await apiClient.get('/finance/expenses');
     return response.data;
   } catch (error) {
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+      console.error('Network Error: Backend server is not running or not accessible at', apiClient.defaults.baseURL);
+      throw new Error('Cannot connect to server. Please ensure the backend is running on port 8000.');
+    }
     throw error;
   }
 };
@@ -16,6 +20,9 @@ export const getExpenseById = async (id) => {
     const response = await apiClient.get(`/finance/expenses/${id}`);
     return response.data;
   } catch (error) {
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+      throw new Error('Cannot connect to server. Please ensure the backend is running.');
+    }
     throw error;
   }
 };
@@ -26,6 +33,9 @@ export const createExpense = async (expenseData) => {
     const response = await apiClient.post('/finance/expenses', expenseData);
     return response.data;
   } catch (error) {
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+      throw new Error('Cannot connect to server. Please ensure the backend is running.');
+    }
     throw error;
   }
 };
@@ -36,6 +46,9 @@ export const updateExpense = async (id, expenseData) => {
     const response = await apiClient.put(`/finance/expenses/${id}`, expenseData);
     return response.data;
   } catch (error) {
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+      throw new Error('Cannot connect to server. Please ensure the backend is running.');
+    }
     throw error;
   }
 };
@@ -46,6 +59,9 @@ export const deleteExpense = async (id) => {
     const response = await apiClient.delete(`/finance/expenses/${id}`);
     return response.data;
   } catch (error) {
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+      throw new Error('Cannot connect to server. Please ensure the backend is running.');
+    }
     throw error;
   }
 };

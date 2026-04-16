@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Table,
@@ -14,117 +14,59 @@ import {
   InputAdornment,
   Pagination,
   Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import { Search, Add, VisibilityOutlined, EditOutlined, DeleteOutlined } from "@mui/icons-material";
+
+import { fetchDamageRecords, createDamageRecord, updateDamageRecord, deleteDamageRecord } from '../../lib/damageApi';
+import CreateDamage from '../../components/damage-tracking/Create';
+import EditDamage from '../../components/damage-tracking/Edit';
+import ViewDamage from '../../components/damage-tracking/View';
+import DeleteDamage from '../../components/damage-tracking/Delete';
 
 const Damage = () => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage] = useState(10);
 
-  // Damage Tracking data based on spreadsheet specifications
-  const [damageData, setDamageData] = useState([
-    {
-      id: "DMG001",
-      damageId: "DMG001",
-      productName: "Samsung Galaxy S24",
-      skuCode: "SGS24-128GB",
-      batchNumber: "BATCH001",
-      damageDate: "2024-09-20",
-      damageType: "Physical Damage",
-      damageReason: "Screen cracked during handling",
-      damagedQuantity: 1,
-      unitCost: 42000,
-      totalLoss: 42000,
-      reportedBy: "Priya Singh",
-      approvedBy: "Ayush Kumar",
-      status: "Approved",
-      actionTaken: "Write-off",
-      warehouseName: "Electronics Warehouse",
-      location: "Shelf A-1",
-      notes: "Screen completely shattered, not repairable"
-    },
-    {
-      id: "DMG002",
-      damageId: "DMG002",
-      productName: "Office Chair Ergonomic",
-      skuCode: "OCE-001",
-      batchNumber: "BATCH003",
-      damageDate: "2024-09-18",
-      damageType: "Water Damage",
-      damageReason: "Leak from ceiling during rain",
-      damagedQuantity: 2,
-      unitCost: 10000,
-      totalLoss: 20000,
-      reportedBy: "Nysa Mittal",
-      approvedBy: "Priya Singh",
-      status: "Under Review",
-      actionTaken: "Pending",
-      warehouseName: "Furniture Warehouse",
-      location: "Section B-2",
-      notes: "Fabric and foam damaged, needs assessment"
-    },
-    {
-      id: "DMG003",
-      damageId: "DMG003",
-      productName: "Coffee Mug Ceramic",
-      skuCode: "CMC-001",
-      batchNumber: "BATCH004",
-      damageDate: "2024-09-15",
-      damageType: "Breakage",
-      damageReason: "Dropped during loading",
-      damagedQuantity: 5,
-      unitCost: 120,
-      totalLoss: 600,
-      reportedBy: "Rajesh Kumar",
-      approvedBy: "Ayush Kumar",
-      status: "Approved",
-      actionTaken: "Write-off",
-      warehouseName: "Main Warehouse",
-      location: "Loading Dock",
-      notes: "Multiple pieces broken, not salvageable"
-    },
-    {
-      id: "DMG004",
-      damageId: "DMG004",
-      productName: "LED TV 55 inch",
-      skuCode: "LTV55-4K",
-      batchNumber: "BATCH005",
-      damageDate: "2024-09-12",
-      damageType: "Electrical Damage",
-      damageReason: "Power surge during testing",
-      damagedQuantity: 1,
-      unitCost: 32000,
-      totalLoss: 32000,
-      reportedBy: "Amit Patel",
-      approvedBy: "Priya Singh",
-      status: "Approved",
-      actionTaken: "Return to Supplier",
-      warehouseName: "Electronics Warehouse",
-      location: "Testing Area",
-      notes: "Motherboard fried, under warranty"
-    },
-    {
-      id: "DMG005",
-      damageId: "DMG005",
-      productName: "Dell Laptop Inspiron 15",
-      skuCode: "DLI15-512GB",
-      batchNumber: "BATCH002",
-      damageDate: "2024-09-10",
-      damageType: "Physical Damage",
-      damageReason: "Forklift accident",
-      damagedQuantity: 1,
-      unitCost: 52000,
-      totalLoss: 52000,
-      reportedBy: "Priya Sharma",
-      approvedBy: "Ayush Kumar",
-      status: "Approved",
-      actionTaken: "Insurance Claim",
-      warehouseName: "Electronics Warehouse",
-      location: "Aisle C-3",
-      notes: "Severe structural damage, insurance claim filed"
+  // Real data from API
+  const [damageData, setDamageData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalItems: 0 });
+
+  // Dialog states
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedDamage, setSelectedDamage] = useState(null);
+
+  // Fetch damage records from API
+  const loadDamageRecords = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetchDamageRecords(page + 1, rowsPerPage);
+      setDamageData(response.data || []);
+      setPagination(response.pagination || { currentPage: 1, totalPages: 1, totalItems: 0 });
+    } catch (err) {
+      setError(err.message || "Failed to fetch damage records");
+      console.error("Error fetching damage records:", err);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    loadDamageRecords();
+  }, [page]);
 
   const filteredDamages = damageData.filter(damage =>
     damage.damageId.toLowerCase().includes(search.toLowerCase()) ||
@@ -176,6 +118,65 @@ const Damage = () => {
     }
   };
 
+  // CRUD Handlers
+  const handleCreate = async (formData) => {
+    try {
+      await createDamageRecord(formData);
+      setCreateDialogOpen(false);
+      loadDamageRecords();
+    } catch (err) {
+      console.error("Error creating damage record:", err);
+      alert(err.message || "Failed to create damage record");
+    }
+  };
+
+  const handleUpdate = async (formData) => {
+    try {
+      await updateDamageRecord(selectedDamage.id, formData);
+      setEditDialogOpen(false);
+      setSelectedDamage(null);
+      loadDamageRecords();
+    } catch (err) {
+      console.error("Error updating damage record:", err);
+      alert(err.message || "Failed to update damage record");
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteDamageRecord(selectedDamage.id);
+      setDeleteDialogOpen(false);
+      setSelectedDamage(null);
+      loadDamageRecords();
+    } catch (err) {
+      console.error("Error deleting damage record:", err);
+      alert(err.message || "Failed to delete damage record");
+    }
+  };
+
+  const openViewDialog = (damage) => {
+    setSelectedDamage(damage);
+    setViewDialogOpen(true);
+  };
+
+  const openEditDialog = (damage) => {
+    setSelectedDamage(damage);
+    setEditDialogOpen(true);
+  };
+
+  const openDeleteDialog = (damage) => {
+    setSelectedDamage(damage);
+    setDeleteDialogOpen(true);
+  };
+
+  const closeDialogs = () => {
+    setCreateDialogOpen(false);
+    setEditDialogOpen(false);
+    setViewDialogOpen(false);
+    setDeleteDialogOpen(false);
+    setSelectedDamage(null);
+  };
+
   return (
     <div className="content-area">
       
@@ -197,13 +198,26 @@ const Damage = () => {
         <button
           className="hrms-btn hrms-btn-primary"
           style={{ height: "40px" }}
+          onClick={() => setCreateDialogOpen(true)}
         >
           <Add />
           Report Damage
         </button>
       </Box>
 
-      {/* Damage Table */}
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Loading State */}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
       <Box className="hrms-card">
         <Box className="hrms-card-content" sx={{ padding: 0 }}>
           <Table className="hrms-table">
@@ -248,18 +262,21 @@ const Damage = () => {
                         <IconButton 
                           size="small"
                           sx={{ color: "#1976D2", fontSize: "16px" }}
+                          onClick={() => openViewDialog(damage)}
                         >
                           <VisibilityOutlined />
                         </IconButton>
                         <IconButton 
                           size="small"
                           sx={{ color: "#000", fontSize: "16px" }}
+                          onClick={() => openEditDialog(damage)}
                         >
                           <EditOutlined />
                         </IconButton>
                         <IconButton 
                           size="small"
                           sx={{ color: "#d32f2f", fontSize: "16px" }}
+                          onClick={() => openDeleteDialog(damage)}
                         >
                           <DeleteOutlined />
                         </IconButton>
@@ -277,7 +294,7 @@ const Damage = () => {
               Showing {page * rowsPerPage + 1} to {Math.min((page + 1) * rowsPerPage, filteredDamages.length)} of {filteredDamages.length} damage reports
             </Typography>
             <Pagination
-              count={Math.ceil(filteredDamages.length / rowsPerPage)}
+              count={pagination.totalPages}
               page={page + 1}
               onChange={(_, newPage) => setPage(newPage - 1)}
               size="small"
@@ -286,6 +303,42 @@ const Damage = () => {
           </Stack>
         </Box>
       </Box>
+      )}
+
+      {/* Create Dialog */}
+      <Dialog open={createDialogOpen} onClose={closeDialogs} maxWidth="md" fullWidth>
+        <DialogTitle>Report Damage</DialogTitle>
+        <DialogContent>
+          <CreateDamage handleClose={closeDialogs} handleCreate={handleCreate} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onClose={closeDialogs} maxWidth="md" fullWidth>
+        <DialogTitle>Edit Damage Report</DialogTitle>
+        <DialogContent>
+          <EditDamage editData={selectedDamage} handleClose={closeDialogs} handleUpdate={handleUpdate} />
+        </DialogContent>
+      </Dialog>
+
+      {/* View Dialog */}
+      <Dialog open={viewDialogOpen} onClose={closeDialogs} maxWidth="md" fullWidth>
+        <DialogTitle>View Damage Report</DialogTitle>
+        <DialogContent>
+          <ViewDamage viewData={selectedDamage} handleClose={closeDialogs} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDialogs} variant="outlined">Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={closeDialogs} maxWidth="sm" fullWidth>
+        <DialogTitle>Delete Damage Report</DialogTitle>
+        <DialogContent>
+          <DeleteDamage damageData={selectedDamage} onClose={closeDialogs} onDelete={handleDelete} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

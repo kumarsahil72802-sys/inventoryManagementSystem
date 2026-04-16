@@ -10,6 +10,7 @@ export const connectDB = async () => {
   try {
     await mongoose.connect(connection_string, {
       family: 4,
+      tlsAllowInvalidCertificates: true,
     }).then(async ()=>{  
       await createAdmin();
       console.log('Connection successfull')}

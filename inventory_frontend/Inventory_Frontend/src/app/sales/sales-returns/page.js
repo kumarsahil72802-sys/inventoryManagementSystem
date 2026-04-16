@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Table,
@@ -16,6 +16,8 @@ import {
   Button,
   Chip,
   Stack,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import { Search, Add, VisibilityOutlined, EditOutlined, DeleteOutlined } from "@mui/icons-material";
 import CommonDialog from "@/components/CommonDialog";
@@ -23,11 +25,14 @@ import CreateSalesReturn from "@/components/sales/sales-return/Create";
 import ViewSalesReturn from "@/components/sales/sales-return/View";
 import EditSalesReturn from "@/components/sales/sales-return/Edit";
 import DeleteSalesReturn from "@/components/sales/sales-return/Delete";
+import { getAllSalesReturns, createSalesReturn, updateSalesReturn, deleteSalesReturn } from "@/lib/salesApi";
 
 const SalesReturns = () => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage] = useState(10);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Dialog states
   const [createShow, setCreateShow] = useState(false);
@@ -36,42 +41,31 @@ const SalesReturns = () => {
   const [deleteShow, setDeleteShow] = useState(false);
   const [viewData, setViewData] = useState(null);
   const [editData, setEditData] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
   const [deleteData, setDeleteData] = useState(null);
 
-  // Sales Returns data - simplified
-  const [salesData, setSalesData] = useState([
-    {
-      id: "SR001",
-      returnId: "SR001",
-      customerName: "ABC Electronics",
-      productName: "Samsung Galaxy S24",
-      quantity: 2,
-      returnAmount: 90000,
-      returnDate: "2024-09-18",
-      status: "Processed"
-    },
-    {
-      id: "SR002",
-      returnId: "SR002",
-      customerName: "XYZ Furniture",
-      productName: "Office Chair",
-      quantity: 1,
-      returnAmount: 5000,
-      returnDate: "2024-09-19",
-      status: "Pending"
-    },
-    {
-      id: "SR003",
-      returnId: "SR003",
-      customerName: "Tech Solutions",
-      productName: "LED TV 43",
-      quantity: 1,
-      returnAmount: 40000,
-      returnDate: "2024-09-20",
-      status: "Approved"
+  // Sales Returns data - fetched from API
+  const [salesData, setSalesData] = useState([]);
+
+  // Fetch sales returns on mount
+  useEffect(() => {
+    fetchSalesReturns();
+  }, []);
+
+  const fetchSalesReturns = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getAllSalesReturns();
+      const fetchedData = Array.isArray(response?.data) ? response.data :
+                         (Array.isArray(response) ? response : []);
+      setSalesData(fetchedData);
+    } catch (err) {
+      console.error('Error fetching sales returns:', err);
+      setError(err?.response?.data?.message || err.message || 'Failed to fetch sales returns');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   // Handlers
   const handleView = (row) => { setViewData(row); setViewShow(true); };
@@ -85,30 +79,53 @@ const SalesReturns = () => {
   const handleCreateOpen = () => setCreateShow(true);
   const handleClose = () => { setViewShow(false); setEditShow(false); setDeleteShow(false); setCreateShow(false); };
 
-  const handleCreate = (newReturn) => {
-    const nextId = salesData.length + 1;
-    const newReturnData = {
-      ...newReturn,
-      id: `SR${String(nextId).padStart(3, '0')}`,
-      returnId: `SR${String(nextId).padStart(3, '0')}`
-    };
-    setSalesData([...salesData, newReturnData]);
-    setCreateShow(false);
+  const handleCreate = async (newReturn) => {
+    try {
+      setLoading(true);
+      await createSalesReturn(newReturn);
+      await fetchSalesReturns();
+      setCreateShow(false);
+      setError(null);
+    } catch (err) {
+      console.error('Error creating sales return:', err);
+      setError(err?.response?.data?.message || err.message || 'Failed to create sales return');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUpdate = (updatedReturn) => {
-    setSalesData(salesData.map(row => 
-      row.returnId === updatedReturn.returnId 
-        ? { ...updatedReturn }
-        : row
-    ));
+  const handleUpdate = async (updatedReturn) => {
+    try {
+      setLoading(true);
+      const returnId = editData?._id || editData?.id;
+      await updateSalesReturn(returnId, updatedReturn);
+      await fetchSalesReturns();
+      setEditShow(false);
+      setEditData(null);
+      setError(null);
+    } catch (err) {
+      console.error('Error updating sales return:', err);
+      setError(err?.response?.data?.message || err.message || 'Failed to update sales return');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = () => {
-    setSalesData(salesData.filter(row => row.returnId !== deleteId));
-    setDeleteShow(false);
-    setDeleteData(null);
-    setDeleteId(null);
+  const handleDelete = async () => {
+    try {
+      setLoading(true);
+      const returnId = deleteData?._id || deleteData?.id;
+      await deleteSalesReturn(returnId);
+      await fetchSalesReturns();
+      setDeleteShow(false);
+      setDeleteData(null);
+      setError(null);
+    } catch (err) {
+      console.error('Error deleting sales return:', err);
+      setError(err?.response?.data?.message || err.message || 'Failed to delete sales return');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filter data
@@ -137,8 +154,26 @@ const SalesReturns = () => {
     }
   };
 
+  // Loading state
+  if (loading && salesData.length === 0) {
+    return (
+      <div className="content-area">
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+          <CircularProgress />
+        </Box>
+      </div>
+    );
+  }
+
   return (
     <div className="content-area">
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
       {/* Header with Search and Create Button */}
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2, mb: 3 }}>
         <TextField
@@ -187,68 +222,78 @@ const SalesReturns = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {currentPageData.map((row, index) => (
-              <TableRow key={row.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
-                <TableCell>{page * rowsPerPage + index + 1}</TableCell>
-                <TableCell align="left">
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-                    {row.returnId}
+            {currentPageData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                  <Typography variant="body1" color="text.secondary">
+                    No sales returns found
                   </Typography>
-                </TableCell>
-                <TableCell align="left">
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.customerName}
-                  </Typography>
-                </TableCell>
-                <TableCell align="left">
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.productName}
-                  </Typography>
-                </TableCell>
-                <TableCell align="left">
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.quantity}
-                  </Typography>
-                </TableCell>
-                <TableCell align="left">₹{row.returnAmount.toLocaleString()}</TableCell>
-                <TableCell align="left">{row.returnDate}</TableCell>
-                <TableCell align="left">
-                  <Chip
-                    label={row.status}
-                    size="small"
-                    sx={{
-                      ...getStatusColor(row.status),
-                      fontWeight: 500
-                    }}
-                  />
-                </TableCell>
-                <TableCell align="center">
-                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleView(row)}
-                      sx={{ color: '#1976d2' }}
-                    >
-                      <VisibilityOutlined />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEdit(row)}
-                      sx={{ color: '#000' }}
-                    >
-                      <EditOutlined />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleShowDelete(row.returnId)}
-                      sx={{ color: '#f44336' }}
-                    >
-                      <DeleteOutlined />
-                    </IconButton>
-                  </Box>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              currentPageData.map((row, index) => (
+                <TableRow key={row.id || row._id || index} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
+                  <TableCell>{page * rowsPerPage + index + 1}</TableCell>
+                  <TableCell align="left">
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+                      {row.returnNumber || row.returnId || 'N/A'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="left">
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {row.customerName || 'N/A'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="left">
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {row.items && row.items[0]?.itemName ? row.items[0].itemName : (row.productName || 'N/A')}
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="left">
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {row.items && row.items[0]?.quantity ? row.items[0].quantity : (row.quantity || 0)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="left">₹{Number(row.totalAmount || row.returnAmount || 0).toLocaleString()}</TableCell>
+                  <TableCell align="left">{row.returnDate ? new Date(row.returnDate).toLocaleDateString() : 'N/A'}</TableCell>
+                  <TableCell align="left">
+                    <Chip
+                      label={row.status || 'Pending'}
+                      size="small"
+                      sx={{
+                        ...getStatusColor(row.status),
+                        fontWeight: 500
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell align="center">
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleView(row)}
+                        sx={{ color: '#1976d2' }}
+                      >
+                        <VisibilityOutlined />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleEdit(row)}
+                        sx={{ color: '#000' }}
+                      >
+                        <EditOutlined />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleShowDelete(row.returnId || row._id || row.id)}
+                        sx={{ color: '#f44336' }}
+                      >
+                        <DeleteOutlined />
+                      </IconButton>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
      

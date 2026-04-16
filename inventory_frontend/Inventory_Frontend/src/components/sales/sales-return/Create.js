@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Grid,
   TextField,
@@ -9,6 +9,8 @@ import {
   MenuItem,
   Button,
 } from "@mui/material";
+import { fetchCustomers } from '../../../lib/customerApi';
+import { fetchItems } from '../../../lib/itemApi';
 
 const CreateSalesReturn = ({ handleClose, handleCreate }) => {
   const [formData, setFormData] = useState({
@@ -22,9 +24,25 @@ const CreateSalesReturn = ({ handleClose, handleCreate }) => {
     notes: ""
   });
 
-  const customers = ["ABC Electronics", "XYZ Furniture", "Tech Solutions", "Global Corp", "Prime Industries"];
-  const products = ["Samsung Galaxy S24", "Office Chair", "LED TV 43", "Wireless Mouse", "Keyboard", "Monitor 24"];
+  const [customers, setCustomers] = useState([]);
+  const [products, setProducts] = useState([]);
   const reasons = ["Defective Product", "Wrong Item", "Customer Request", "Quality Issues", "Damaged in Transit"];
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [customersRes, productsRes] = await Promise.all([
+          fetchCustomers(),
+          fetchItems(1, 100)
+        ]);
+        setCustomers(customersRes.data || []);
+        setProducts(productsRes.data || []);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+      }
+    };
+    loadData();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -72,8 +90,8 @@ const CreateSalesReturn = ({ handleClose, handleCreate }) => {
             onChange={handleChange}
           >
             {customers.map((customer) => (
-              <MenuItem key={customer} value={customer}>
-                {customer}
+              <MenuItem key={customer.id || customer._id || customer.customerName} value={customer.customerName || customer.name}>
+                {customer.customerName || customer.name}
               </MenuItem>
             ))}
           </Select>
@@ -88,8 +106,8 @@ const CreateSalesReturn = ({ handleClose, handleCreate }) => {
             onChange={handleChange}
           >
             {products.map((product) => (
-              <MenuItem key={product} value={product}>
-                {product}
+              <MenuItem key={product.id || product._id} value={product.productName || product.name}>
+                {product.productName || product.name}
               </MenuItem>
             ))}
           </Select>

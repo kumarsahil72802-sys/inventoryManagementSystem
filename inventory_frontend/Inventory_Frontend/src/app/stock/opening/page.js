@@ -19,10 +19,10 @@ import {
 } from "@mui/material";
 import { Search, Add, VisibilityOutlined, EditOutlined, DeleteOutlined } from "@mui/icons-material";
 import CommonDialog from '../../../components/CommonDialog';
-import CreateOpeningStock from '../../../components/Stock Management/OpeningStock/Create';
-import EditOpeningStock from '../../../components/Stock Management/OpeningStock/Edit';
-import ViewOpeningStock from '../../../components/Stock Management/OpeningStock/View';
-import DeleteOpeningStock from '../../../components/Stock Management/OpeningStock/Delete';
+import CreateOpeningStock from '../../../components/stock-management-main/OpeningStock/Create';
+import EditOpeningStock from '../../../components/stock-management-main/OpeningStock/Edit';
+import ViewOpeningStock from '../../../components/stock-management-main/OpeningStock/View';
+import DeleteOpeningStock from '../../../components/stock-management-main/OpeningStock/Delete';
 import { fetchOpeningStock, createOpeningStock, updateOpeningStock, deleteOpeningStock } from '@/lib/stockApi';
 import { fetchItems } from '@/lib/itemApi';
 import { fetchWarehouses } from '@/lib/warehouseApi';

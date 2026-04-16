@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   IconButton,
   Typography,
@@ -18,19 +18,19 @@ import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
 import EditOutlined from "@mui/icons-material/EditOutlined";
 import VisibilityOutlined from "@mui/icons-material/VisibilityOutlined";
 import CommonDialog from "@/components/CommonDialog";
-import CreatePendingOrder from "@/components/Purchase Management/Pending Orders/Create";
-import ViewPendingOrder from "@/components/Purchase Management/Pending Orders/View";
-import EditPendingOrder from "@/components/Purchase Management/Pending Orders/Edit";
-import DeletePendingOrder from "@/components/Purchase Management/Pending Orders/Delete";
+import CreatePendingOrder from "@/components/purchase-management/Pending Orders/Create";
+import ViewPendingOrder from "@/components/purchase-management/Pending Orders/View";
+import EditPendingOrder from "@/components/purchase-management/Pending Orders/Edit";
+import DeletePendingOrder from "@/components/purchase-management/Pending Orders/Delete";
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
+import { getAllPendingOrders, createPendingOrder, updatePendingOrder, deletePendingOrder } from '@/lib/purchaseApi';
+import { CircularProgress, Alert } from '@mui/material';
 
 export default function PendingOrdersTable() {
-  const [rows, setRows] = useState([
-    createData(1, "PO001", "2024-01-15", "ABC Suppliers", "Laptop Pro 15", 5, 250000, "2024-01-25", "Pending"),
-    createData(2, "PO002", "2024-01-16", "XYZ Electronics", "Office Chair", 10, 30000, "2024-01-26", "Approved"),
-    createData(3, "PO003", "2024-01-17", "Tech Solutions", "LED TV 43", 3, 66000, "2024-01-27", "Processing"),
-  ]);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [viewShow, setViewShow] = useState(false);
   const [editShow, setEditShow] = useState(false);
@@ -46,6 +46,29 @@ export default function PendingOrdersTable() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  // Fetch pending orders on component mount
+  useEffect(() => {
+    const fetchPendingOrders = async () => {
+      try {
+        setLoading(true);
+        const response = await getAllPendingOrders();
+        const fetchedData = Array.isArray(response?.data) ? response.data :
+                           (Array.isArray(response) ? response : []);
+        setRows(fetchedData.map((order, index) => ({
+          ...order,
+          si: index + 1
+        })));
+        setError(null);
+      } catch (err) {
+        setError(err?.response?.data?.message || err.message || 'Failed to fetch pending orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPendingOrders();
+  }, []);
 
   function createData(si, orderId, orderDate, supplierName, productName, quantity, totalAmount, expectedDate, status) {
     return {
@@ -65,45 +88,58 @@ export default function PendingOrdersTable() {
   const handleCreateOpen = () => setCreateShow(true);
   const handleClose = () => { setViewShow(false); setEditShow(false); setDeleteShow(false); setCreateShow(false); };
 
-  const handleCreate = (newOrder) => {
-    const nextSi = rows.length + 1;
-    const newRow = createData(
-      nextSi,
-      newOrder.orderId,
-      newOrder.orderDate,
-      newOrder.supplierName,
-      newOrder.productName,
-      newOrder.quantity,
-      newOrder.totalAmount,
-      newOrder.expectedDate,
-      newOrder.status
-    );
-    setRows([...rows, newRow]);
+  const handleCreate = async (newOrder) => {
+    try {
+      await createPendingOrder(newOrder);
+      
+      // Refresh the pending orders list
+      const response = await getAllPendingOrders();
+      const fetchedData = Array.isArray(response?.data) ? response.data :
+                         (Array.isArray(response) ? response : []);
+      setRows(fetchedData.map((order, index) => ({
+        ...order,
+        si: index + 1
+      })));
+      handleClose();
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to create pending order');
+    }
   };
 
-  const handleUpdate = (updatedOrder) => {
-    setRows(rows.map(row =>
-      row.si === updatedOrder.si
-        ? createData(
-            row.si,
-            updatedOrder.orderId,
-            updatedOrder.orderDate,
-            updatedOrder.supplierName,
-            updatedOrder.productName,
-            updatedOrder.quantity,
-            updatedOrder.totalAmount,
-            updatedOrder.expectedDate,
-            updatedOrder.status
-          )
-        : row
-    ));
+  const handleUpdate = async (updatedOrder) => {
+    try {
+      await updatePendingOrder(updatedOrder._id || updatedOrder.id, updatedOrder);
+      
+      // Refresh the pending orders list
+      const response = await getAllPendingOrders();
+      const fetchedData = Array.isArray(response?.data) ? response.data :
+                         (Array.isArray(response) ? response : []);
+      setRows(fetchedData.map((order, index) => ({
+        ...order,
+        si: index + 1
+      })));
+      handleClose();
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to update pending order');
+    }
   };
 
-  const handleDelete = () => {
-    setRows(rows.filter(row => row.orderId !== deleteId));
-    setDeleteShow(false);
-    setDeleteData(null);
-    setDeleteId(null);
+  const handleDelete = async () => {
+    try {
+      await deletePendingOrder(deleteData._id || deleteData.id);
+      
+      // Refresh the pending orders list
+      const response = await getAllPendingOrders();
+      const fetchedData = Array.isArray(response?.data) ? response.data :
+                         (Array.isArray(response) ? response : []);
+      setRows(fetchedData.map((order, index) => ({
+        ...order,
+        si: index + 1
+      })));
+      handleClose();
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to delete pending order');
+    }
   };
 
   const handlePageChange = (event, newPage) => {
@@ -117,6 +153,22 @@ export default function PendingOrdersTable() {
   );
 
   const currentData = filteredRows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
 
   return (
     <div className="content-area">

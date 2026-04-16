@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -23,7 +23,8 @@ import {
   MenuItem,
   Stack,
   Divider,
-  Pagination
+  Pagination,
+  CircularProgress
 } from '@mui/material';
 import {
   Search,
@@ -36,93 +37,49 @@ import {
   Assessment,
   TrendingDown
 } from '@mui/icons-material';
+import { getStockAging } from '../../../lib/reportsApi';
 
 export default function StockAgingReport() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage] = useState(5);
+  const [stockAgingData, setStockAgingData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Sample data for Stock Aging Report
-  const stockAgingData = [
-    {
-      productId: "P001",
-      productName: "Laptop Pro 15",
-      category: "Electronics",
-      currentStock: 45,
-      daysInStock: 15,
-      lastMovement: "2024-01-15",
-      agingCategory: "Fresh",
-      totalValue: 2025000,
-      depreciation: 0,
-      riskLevel: "Low",
-      warehouse: "Main Warehouse"
-    },
-    {
-      productId: "P002",
-      productName: "Office Chair",
-      category: "Furniture",
-      currentStock: 25,
-      daysInStock: 45,
-      lastMovement: "2023-12-01",
-      agingCategory: "30-60 Days",
-      totalValue: 200000,
-      depreciation: 5,
-      riskLevel: "Medium",
-      warehouse: "Main Warehouse"
-    },
-    {
-      productId: "P003",
-      productName: "LED TV 43",
-      category: "Electronics",
-      currentStock: 8,
-      daysInStock: 90,
-      lastMovement: "2023-10-15",
-      agingCategory: "60-90 Days",
-      totalValue: 200000,
-      depreciation: 12,
-      riskLevel: "High",
-      warehouse: "Main Warehouse"
-    },
-    {
-      productId: "P004",
-      productName: "Printer HP",
-      category: "Electronics",
-      currentStock: 15,
-      daysInStock: 120,
-      lastMovement: "2023-09-15",
-      agingCategory: "90+ Days",
-      totalValue: 180000,
-      depreciation: 20,
-      riskLevel: "Critical",
-      warehouse: "Branch Warehouse"
-    },
-    {
-      productId: "P005",
-      productName: "Desk Lamp",
-      category: "Furniture",
-      currentStock: 0,
-      daysInStock: 0,
-      lastMovement: "2024-01-10",
-      agingCategory: "Sold Out",
-      totalValue: 0,
-      depreciation: 0,
-      riskLevel: "N/A",
-      warehouse: "Main Warehouse"
-    },
-    {
-      productId: "P006",
-      productName: "Wireless Mouse",
-      category: "Electronics",
-      currentStock: 60,
-      daysInStock: 180,
-      lastMovement: "2023-07-15",
-      agingCategory: "90+ Days",
-      totalValue: 180000,
-      depreciation: 35,
-      riskLevel: "Critical",
-      warehouse: "Main Warehouse"
-    }
-  ];
+  // Fetch stock aging data from API
+  useEffect(() => {
+    const fetchStockAging = async () => {
+      try {
+        setLoading(true);
+        const response = await getStockAging();
+        // Transform API data to match frontend structure
+        const transformedData = response.data.map(item => ({
+          productId: item.itemId?._id || item.itemId || item.sku || 'N/A',
+          productName: item.itemName || item.itemId?.productName || 'N/A',
+          category: item.category || 'N/A',
+          currentStock: item.currentStock || 0,
+          daysInStock: item.daysSinceLastMovement || 0,
+          lastMovement: item.lastMovementDate || item.updatedAt || item.createdAt || 'N/A',
+          agingCategory: item.agingCategory || 'Fresh',
+          totalValue: item.totalValue || 0,
+          depreciation: 0, // API doesn't provide this, default to 0
+          riskLevel: item.status || 'Low',
+          warehouse: item.warehouse || 'N/A'
+        }));
+        setStockAgingData(transformedData);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching stock aging:', err);
+        setError('Failed to load stock aging data');
+        setStockAgingData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStockAging();
+  }, []);
 
   const filteredData = stockAgingData.filter(item =>
     item.productName.toLowerCase().includes(search.toLowerCase()) ||
@@ -297,7 +254,6 @@ export default function StockAgingReport() {
         </Box>
       </Box>
 
-
       {/* Report Table */}
       <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '0.75rem' }}>
         <Table>
@@ -316,80 +272,107 @@ export default function StockAgingReport() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {currentData.map((row, index) => (
-              <TableRow key={row.productId} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
-                <TableCell>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-                    {row.productId}
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                  <CircularProgress />
+                  <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
+                    Loading stock aging data...
                   </Typography>
                 </TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.productName}
-                  </Typography>
-                </TableCell>
-                <TableCell>{row.category}</TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.currentStock}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500, color: row.daysInStock > 90 ? '#d32f2f' : row.daysInStock > 60 ? '#f57c00' : '#2e7d32' }}>
-                    {row.daysInStock}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={row.agingCategory}
-                    size="small"
-                    sx={{
-                      ...getAgingColor(row.agingCategory),
-                      fontWeight: 500
-                    }}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    ₹{row.totalValue.toLocaleString()}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500, color: row.depreciation > 20 ? '#d32f2f' : row.depreciation > 10 ? '#f57c00' : '#2e7d32' }}>
-                    {row.depreciation}%
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={row.riskLevel}
-                    size="small"
-                    sx={{
-                      ...getRiskColor(row.riskLevel),
-                      fontWeight: 500
-                    }}
-                  />
-                </TableCell>
-                <TableCell>{row.lastMovement}</TableCell>
               </TableRow>
-            ))}
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                  <Typography variant="body2" color="error">
+                    {error}
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            ) : currentData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No stock aging data available
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            ) : (
+              currentData.map((row, index) => (
+                <TableRow key={row.productId} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
+                  <TableCell>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+                      {row.productId}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {row.productName}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{row.category}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {row.currentStock}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: row.daysInStock > 90 ? '#d32f2f' : row.daysInStock > 60 ? '#f57c00' : '#2e7d32' }}>
+                      {row.daysInStock}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={row.agingCategory}
+                      size="small"
+                      sx={{
+                        ...getAgingColor(row.agingCategory),
+                        fontWeight: 500
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      ₹{row.totalValue.toLocaleString()}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: row.depreciation > 20 ? '#d32f2f' : row.depreciation > 10 ? '#f57c00' : '#2e7d32' }}>
+                      {row.depreciation}%
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={row.riskLevel}
+                      size="small"
+                      sx={{
+                        ...getRiskColor(row.riskLevel),
+                        fontWeight: 500
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell>{row.lastMovement}</TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
-     
-      {/* Pagination */}
-      <Box sx={{ borderTop: 1, borderColor: 'divider', backgroundColor: '#fafafa', p: 2, }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="body2" color="text.secondary">
-            Showing {page * rowsPerPage + 1} to {Math.min((page + 1) * rowsPerPage, filteredData.length)} of {filteredData.length} items
-          </Typography>
-          <Pagination
-            count={Math.ceil(filteredData.length / rowsPerPage)}
-            page={page + 1}
-            onChange={handlePageChange}
-            size="small"
-            color="primary"
-          />
-        </Stack>
-      </Box>
+
+        {/* Pagination */}
+        <Box sx={{ borderTop: 1, borderColor: 'divider', backgroundColor: '#fafafa', p: 2, }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="body2" color="text.secondary">
+              Showing {page * rowsPerPage + 1} to {Math.min((page + 1) * rowsPerPage, filteredData.length)} of {filteredData.length} items
+            </Typography>
+            <Pagination
+              count={Math.ceil(filteredData.length / rowsPerPage)}
+              page={page + 1}
+              onChange={handlePageChange}
+              size="small"
+              color="primary"
+            />
+          </Stack>
+        </Box>
       </Paper>
     </div>
   );

@@ -353,6 +353,7 @@ const CreateProduct = () => {
   const hasAttribute = formData.attributes?.length > 0;
   const hasVariant = formData.variants?.length > 0;
   const shouldSkipValidation = hasAttribute || hasVariant; // Changed from AND to OR
+  const hasCategorySelected = Boolean(formData.categoryId || formData.category);
 
   if (loading) {
     return (
@@ -441,12 +442,13 @@ const CreateProduct = () => {
                         onChange={(e) => handleInputChange('subCategory', e.target.value)}
                         label="Sub Category *"
                         required
-                        disabled={!formData.category}
-                        displayEmpty
+                        disabled={!hasCategorySelected}
                         MenuProps={{ PaperProps: { sx: { zIndex: 9999 } }, disableScrollLock: true }}
                       >
-                        <MenuItem value="">
-                          <em>{subcategories.length === 0 && formData.category ? 'No subcategories' : 'Select subcategory'}</em>
+                        <MenuItem value="" disabled>
+                          {hasCategorySelected
+                            ? (subcategories.length === 0 ? 'No subcategories found' : 'Select subcategory')
+                            : 'Select category first'}
                         </MenuItem>
                         {subcategories.map((subcategory) => (
                           <MenuItem key={subcategory.id} value={subcategory.subCategoryName || subcategory.name}>
@@ -560,7 +562,7 @@ const CreateProduct = () => {
                   </Grid>
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <FormControl fullWidth>
-                      <InputLabel>HSN Code</InputLabel>
+                      <InputLabel shrink>HSN Code</InputLabel>
                       <Select
                         value={formData.hsnCode}
                         onChange={(e) => {
@@ -639,7 +641,7 @@ const CreateProduct = () => {
                   </Grid>
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <FormControl fullWidth>
-                      <InputLabel>Batch Number</InputLabel>
+                      <InputLabel shrink>Batch Number</InputLabel>
                       <Select
                         value={formData.batchNumber}
                         onChange={(e) => handleInputChange('batchNumber', e.target.value)}
@@ -655,7 +657,7 @@ const CreateProduct = () => {
                   </Grid>
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <FormControl fullWidth>
-                      <InputLabel>Serial Number</InputLabel>
+                      <InputLabel shrink>Serial Number</InputLabel>
                       <Select
                         value={formData.serialNumber}
                         onChange={(e) => handleInputChange('serialNumber', e.target.value)}

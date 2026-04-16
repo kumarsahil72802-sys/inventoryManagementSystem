@@ -26,7 +26,7 @@ const EditCOGS = ({ editData, handleUpdate, handleClose }) => {
           fetchItems(),
           fetchWarehouses()
         ]);
-        setItems(itemsData || []);
+        setItems(itemsData?.data || []);
         setWarehouses(warehousesData || []);
       } catch (err) {
         console.error("Error loading dependencies", err);

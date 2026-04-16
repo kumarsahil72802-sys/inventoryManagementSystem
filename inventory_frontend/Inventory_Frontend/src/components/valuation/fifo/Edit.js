@@ -26,7 +26,7 @@ const EditFIFO = ({ editData, handleUpdate, handleClose }) => {
           fetchItems(),
           fetchWarehouses()
         ]);
-        setItems(itemsData || []);
+        setItems(itemsData?.data || []);
         setWarehousesList(warehousesData || []);
       } catch (err) {
         console.error("Error loading dependencies", err);

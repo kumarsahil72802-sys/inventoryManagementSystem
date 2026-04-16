@@ -19,10 +19,10 @@ import {
 } from "@mui/material";
 import { Search, Add, VisibilityOutlined, EditOutlined, DeleteOutlined, Refresh } from "@mui/icons-material";
 import CommonDialog from '../../../components/CommonDialog';
-import CreateRealTimeStock from '../../../components/Stock Management/RealTimeStock/Create';
-import EditRealTimeStock from '../../../components/Stock Management/RealTimeStock/Edit';
-import ViewRealTimeStock from '../../../components/Stock Management/RealTimeStock/View';
-import DeleteRealTimeStock from '../../../components/Stock Management/RealTimeStock/Delete';
+import CreateRealTimeStock from '../../../components/stock-management-main/RealTimeStock/Create';
+import EditRealTimeStock from '../../../components/stock-management-main/RealTimeStock/Edit';
+import ViewRealTimeStock from '../../../components/stock-management-main/RealTimeStock/View';
+import DeleteRealTimeStock from '../../../components/stock-management-main/RealTimeStock/Delete';
 import { fetchRealTimeStock, createRealTimeStock, updateRealTimeStock, deleteRealTimeStock } from '@/lib/stockApi';
 import { fetchItems } from '@/lib/itemApi';
 import { fetchWarehouses } from '@/lib/warehouseApi';

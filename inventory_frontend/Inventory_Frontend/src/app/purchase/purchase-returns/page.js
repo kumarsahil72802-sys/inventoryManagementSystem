@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   IconButton,
   Typography,
@@ -18,19 +18,19 @@ import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
 import EditOutlined from "@mui/icons-material/EditOutlined";
 import VisibilityOutlined from "@mui/icons-material/VisibilityOutlined";
 import CommonDialog from "@/components/CommonDialog";
-import CreatePurchaseReturn from "@/components/Purchase Management/Purchase Returns/Create";
-import ViewPurchaseReturn from "@/components/Purchase Management/Purchase Returns/View";
-import EditPurchaseReturn from "@/components/Purchase Management/Purchase Returns/Edit";
-import DeletePurchaseReturn from "@/components/Purchase Management/Purchase Returns/Delete";
+import CreatePurchaseReturn from "@/components/purchase-management/Purchase Returns/Create";
+import ViewPurchaseReturn from "@/components/purchase-management/Purchase Returns/View";
+import EditPurchaseReturn from "@/components/purchase-management/Purchase Returns/Edit";
+import DeletePurchaseReturn from "@/components/purchase-management/Purchase Returns/Delete";
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
+import { getAllPurchaseReturns, createPurchaseReturn, updatePurchaseReturn, deletePurchaseReturn } from '@/lib/purchaseApi';
+import { CircularProgress, Alert } from '@mui/material';
 
 export default function PurchaseReturnsTable() {
-  const [rows, setRows] = useState([
-    createData(1, "PR001", "2024-01-15", "ABC Suppliers", "Laptop Pro 15", 2, 100000, "Pending"),
-    createData(2, "PR002", "2024-01-16", "XYZ Electronics", "Office Chair", 1, 3000, "Approved"),
-    createData(3, "PR003", "2024-01-17", "Tech Solutions", "LED TV 43", 1, 22000, "Processed"),
-  ]);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [viewShow, setViewShow] = useState(false);
   const [editShow, setEditShow] = useState(false);
@@ -46,6 +46,29 @@ export default function PurchaseReturnsTable() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  // Fetch purchase returns on component mount
+  useEffect(() => {
+    const fetchPurchaseReturns = async () => {
+      try {
+        setLoading(true);
+        const response = await getAllPurchaseReturns();
+        const fetchedData = Array.isArray(response?.data) ? response.data :
+                           (Array.isArray(response) ? response : []);
+        setRows(fetchedData.map((returnItem, index) => ({
+          ...returnItem,
+          si: index + 1
+        })));
+        setError(null);
+      } catch (err) {
+        setError(err?.response?.data?.message || err.message || 'Failed to fetch purchase returns');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPurchaseReturns();
+  }, []);
 
   function createData(si, returnId, returnDate, supplierName, productName, quantity, totalAmount, status) {
     return {
@@ -65,43 +88,58 @@ export default function PurchaseReturnsTable() {
   const handleCreateOpen = () => setCreateShow(true);
   const handleClose = () => { setViewShow(false); setEditShow(false); setDeleteShow(false); setCreateShow(false); };
 
-  const handleCreate = (newReturn) => {
-    const nextSi = rows.length + 1;
-    const newRow = createData(
-      nextSi,
-      newReturn.returnId,
-      newReturn.returnDate,
-      newReturn.supplierName,
-      newReturn.productName,
-      newReturn.quantity,
-      newReturn.totalAmount,
-      newReturn.status
-    );
-    setRows([...rows, newRow]);
+  const handleCreate = async (newReturn) => {
+    try {
+      await createPurchaseReturn(newReturn);
+      
+      // Refresh the purchase returns list
+      const response = await getAllPurchaseReturns();
+      const fetchedData = Array.isArray(response?.data) ? response.data :
+                         (Array.isArray(response) ? response : []);
+      setRows(fetchedData.map((returnItem, index) => ({
+        ...returnItem,
+        si: index + 1
+      })));
+      handleClose();
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to create purchase return');
+    }
   };
 
-  const handleUpdate = (updatedReturn) => {
-    setRows(rows.map(row =>
-      row.si === updatedReturn.si
-        ? createData(
-            row.si,
-            updatedReturn.returnId,
-            updatedReturn.returnDate,
-            updatedReturn.supplierName,
-            updatedReturn.productName,
-            updatedReturn.quantity,
-            updatedReturn.totalAmount,
-            updatedReturn.status
-          )
-        : row
-    ));
+  const handleUpdate = async (updatedReturn) => {
+    try {
+      await updatePurchaseReturn(updatedReturn._id || updatedReturn.id, updatedReturn);
+      
+      // Refresh the purchase returns list
+      const response = await getAllPurchaseReturns();
+      const fetchedData = Array.isArray(response?.data) ? response.data :
+                         (Array.isArray(response) ? response : []);
+      setRows(fetchedData.map((returnItem, index) => ({
+        ...returnItem,
+        si: index + 1
+      })));
+      handleClose();
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to update purchase return');
+    }
   };
 
-  const handleDelete = () => {
-    setRows(rows.filter(row => row.returnId !== deleteId));
-    setDeleteShow(false);
-    setDeleteData(null);
-    setDeleteId(null);
+  const handleDelete = async () => {
+    try {
+      await deletePurchaseReturn(deleteData._id || deleteData.id);
+      
+      // Refresh the purchase returns list
+      const response = await getAllPurchaseReturns();
+      const fetchedData = Array.isArray(response?.data) ? response.data :
+                         (Array.isArray(response) ? response : []);
+      setRows(fetchedData.map((returnItem, index) => ({
+        ...returnItem,
+        si: index + 1
+      })));
+      handleClose();
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to delete purchase return');
+    }
   };
 
   const handlePageChange = (event, newPage) => {
@@ -115,6 +153,22 @@ export default function PurchaseReturnsTable() {
   );
 
   const currentData = filteredRows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
 
   return (
     <div className="content-area">

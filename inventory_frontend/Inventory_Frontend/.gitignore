@@ -20,18 +20,32 @@
 # production
 /build
 
+# env files - NEVER COMMIT SENSITIVE DATA
+.env*
+!.env.example
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
 # misc
 .DS_Store
 *.pem
+
+# Backup and archive files
+*.zip
+*.tar.gz
+*.rar
+*.bak
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
 
 # vercel
 .vercel

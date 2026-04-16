@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -23,7 +23,8 @@ import {
   MenuItem,
   Stack,
   Divider,
-  Pagination
+  Pagination,
+  CircularProgress
 } from '@mui/material';
 import {
   Search,
@@ -36,105 +37,51 @@ import {
   AttachMoney,
   Calculate
 } from '@mui/icons-material';
+import { getValuationReport } from '../../../lib/reportsApi';
 
 export default function ValuationReport() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage] = useState(5);
+  const [valuationData, setValuationData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Sample data for Valuation Report
-  const valuationData = [
-    {
-      productId: "P001",
-      productName: "Laptop Pro 15",
-      category: "Electronics",
-      currentStock: 45,
-      unitCost: 45000,
-      totalCost: 2025000,
-      marketValue: 4725000,
-      valuationMethod: "FIFO",
-      grossProfit: 2700000,
-      profitMargin: 57.1,
-      lastValuation: "2024-01-15",
-      valuationStatus: "Current",
-      warehouse: "Main Warehouse"
-    },
-    {
-      productId: "P002",
-      productName: "Office Chair",
-      category: "Furniture",
-      currentStock: 25,
-      unitCost: 8000,
-      totalCost: 200000,
-      marketValue: 250000,
-      valuationMethod: "Weighted Average",
-      grossProfit: 50000,
-      profitMargin: 25.0,
-      lastValuation: "2024-01-14",
-      valuationStatus: "Current",
-      warehouse: "Main Warehouse"
-    },
-    {
-      productId: "P003",
-      productName: "LED TV 43",
-      category: "Electronics",
-      currentStock: 8,
-      unitCost: 25000,
-      totalCost: 200000,
-      marketValue: 180000,
-      valuationMethod: "LIFO",
-      grossProfit: -20000,
-      profitMargin: -10.0,
-      lastValuation: "2024-01-13",
-      valuationStatus: "Depreciated",
-      warehouse: "Main Warehouse"
-    },
-    {
-      productId: "P004",
-      productName: "Printer HP",
-      category: "Electronics",
-      currentStock: 15,
-      unitCost: 12000,
-      totalCost: 180000,
-      marketValue: 195000,
-      valuationMethod: "FIFO",
-      grossProfit: 15000,
-      profitMargin: 8.3,
-      lastValuation: "2024-01-12",
-      valuationStatus: "Current",
-      warehouse: "Branch Warehouse"
-    },
-    {
-      productId: "P005",
-      productName: "Desk Lamp",
-      category: "Furniture",
-      currentStock: 0,
-      unitCost: 2500,
-      totalCost: 0,
-      marketValue: 0,
-      valuationMethod: "Weighted Average",
-      grossProfit: 0,
-      profitMargin: 0,
-      lastValuation: "2024-01-10",
-      valuationStatus: "Sold Out",
-      warehouse: "Main Warehouse"
-    },
-    {
-      productId: "P006",
-      productName: "Wireless Mouse",
-      category: "Electronics",
-      currentStock: 60,
-      unitCost: 3000,
-      totalCost: 180000,
-      marketValue: 240000,
-      valuationMethod: "FIFO",
-      grossProfit: 60000,
-      profitMargin: 33.3,
-      lastValuation: "2024-01-11",
-      valuationStatus: "Current",
-      warehouse: "Main Warehouse"
-    }
-  ];
+  // Fetch valuation data from API
+  useEffect(() => {
+    const fetchValuation = async () => {
+      try {
+        setLoading(true);
+        const response = await getValuationReport();
+        // Transform API data to match frontend structure
+        const transformedData = response.data.map(item => ({
+          productId: item.itemId?._id || item.itemId || item.sku || 'N/A',
+          productName: item.itemName || item.itemId?.productName || 'N/A',
+          category: item.category || 'N/A',
+          currentStock: item.currentStock || 0,
+          unitCost: item.averageCost || 0,
+          totalCost: item.totalValue || 0,
+          marketValue: item.totalValue || 0, // API doesn't separate market value
+          valuationMethod: item.valuationMethod || 'FIFO',
+          grossProfit: item.profitMargin ? (item.totalValue * item.profitMargin / 100) : 0,
+          profitMargin: item.profitMargin || 0,
+          lastValuation: item.updatedAt || item.createdAt || 'N/A',
+          valuationStatus: 'Current', // API doesn't provide this
+          warehouse: item.warehouse || 'N/A'
+        }));
+        setValuationData(transformedData);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching valuation:', err);
+        setError('Failed to load valuation data');
+        setValuationData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchValuation();
+  }, []);
 
   const filteredData = valuationData.filter(item =>
     item.productName.toLowerCase().includes(search.toLowerCase()) ||
@@ -302,7 +249,6 @@ export default function ValuationReport() {
         </Box>
       </Box>
 
-
       {/* Report Table */}
       <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '0.75rem' }}>
         <Table>
@@ -322,85 +268,112 @@ export default function ValuationReport() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {currentData.map((row, index) => (
-              <TableRow key={row.productId} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
-                <TableCell>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-                    {row.productId}
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={11} align="center" sx={{ py: 4 }}>
+                  <CircularProgress />
+                  <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
+                    Loading valuation data...
                   </Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.productName}
-                  </Typography>
-                </TableCell>
-                <TableCell>{row.category}</TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.currentStock}
-                  </Typography>
-                </TableCell>
-                <TableCell>₹{row.unitCost.toLocaleString()}</TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    ₹{row.totalCost.toLocaleString()}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500, color: '#2e7d32' }}>
-                    ₹{row.marketValue.toLocaleString()}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={row.valuationMethod}
-                    size="small"
-                    sx={{
-                      ...getMethodColor(row.valuationMethod),
-                      fontWeight: 500
-                    }}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500, color: row.grossProfit >= 0 ? '#2e7d32' : '#d32f2f' }}>
-                    ₹{row.grossProfit.toLocaleString()}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500, color: row.profitMargin >= 0 ? '#2e7d32' : '#d32f2f' }}>
-                    {row.profitMargin}%
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={row.valuationStatus}
-                    size="small"
-                    sx={{
-                      ...getValuationStatusColor(row.valuationStatus),
-                      fontWeight: 500
-                    }}
-                  />
                 </TableCell>
               </TableRow>
-            ))}
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={11} align="center" sx={{ py: 4 }}>
+                  <Typography variant="body2" color="error">
+                    {error}
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            ) : currentData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={11} align="center" sx={{ py: 4 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No valuation data available
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            ) : (
+              currentData.map((row, index) => (
+                <TableRow key={row.productId} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
+                  <TableCell>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+                      {row.productId}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {row.productName}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{row.category}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {row.currentStock}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>₹{row.unitCost.toLocaleString()}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      ₹{row.totalCost.toLocaleString()}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#2e7d32' }}>
+                      ₹{row.marketValue.toLocaleString()}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={row.valuationMethod}
+                      size="small"
+                      sx={{
+                        ...getMethodColor(row.valuationMethod),
+                        fontWeight: 500
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: row.grossProfit >= 0 ? '#2e7d32' : '#d32f2f' }}>
+                      ₹{row.grossProfit.toLocaleString()}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: row.profitMargin >= 0 ? '#2e7d32' : '#d32f2f' }}>
+                      {row.profitMargin}%
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={row.valuationStatus}
+                      size="small"
+                      sx={{
+                        ...getValuationStatusColor(row.valuationStatus),
+                        fontWeight: 500
+                      }}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
-     
-      {/* Pagination */}
-      <Box sx={{ borderTop: 1, borderColor: 'divider', backgroundColor: '#fafafa', p: 2, }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="body2" color="text.secondary">
-            Showing {page * rowsPerPage + 1} to {Math.min((page + 1) * rowsPerPage, filteredData.length)} of {filteredData.length} items
-          </Typography>
-          <Pagination
-            count={Math.ceil(filteredData.length / rowsPerPage)}
-            page={page + 1}
-            onChange={handlePageChange}
-            size="small"
-            color="primary"
-          />
-        </Stack>
-      </Box>
+
+        {/* Pagination */}
+        <Box sx={{ borderTop: 1, borderColor: 'divider', backgroundColor: '#fafafa', p: 2, }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="body2" color="text.secondary">
+              Showing {page * rowsPerPage + 1} to {Math.min((page + 1) * rowsPerPage, filteredData.length)} of {filteredData.length} items
+            </Typography>
+            <Pagination
+              count={Math.ceil(filteredData.length / rowsPerPage)}
+              page={page + 1}
+              onChange={handlePageChange}
+              size="small"
+              color="primary"
+            />
+          </Stack>
+        </Box>
       </Paper>
     </div>
   );

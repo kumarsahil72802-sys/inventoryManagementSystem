@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Table,
@@ -15,6 +15,8 @@ import {
   Pagination,
   Button,
   Chip,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import { Search, Add, VisibilityOutlined, EditOutlined, DeleteOutlined } from "@mui/icons-material";
 import CommonDialog from "@/components/CommonDialog";
@@ -22,11 +24,14 @@ import CreateDeliveryChallan from "@/components/sales/delivery-challan/Create";
 import ViewDeliveryChallan from "@/components/sales/delivery-challan/View";
 import EditDeliveryChallan from "@/components/sales/delivery-challan/Edit";
 import DeleteDeliveryChallan from "@/components/sales/delivery-challan/Delete";
+import { getAllDeliveryChallans, createDeliveryChallan, updateDeliveryChallan, deleteDeliveryChallan } from "@/lib/salesApi";
 
 const DeliveryChallans = () => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage] = useState(10);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Dialog states
   const [createShow, setCreateShow] = useState(false);
@@ -35,82 +40,90 @@ const DeliveryChallans = () => {
   const [deleteShow, setDeleteShow] = useState(false);
   const [viewData, setViewData] = useState(null);
   const [editData, setEditData] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
   const [deleteData, setDeleteData] = useState(null);
 
-  // Delivery Challans data - simplified
-  const [challanData, setChallanData] = useState([
-    {
-      id: "DC001",
-      challanId: "DC001",
-      orderId: "SO001",
-      customerName: "ABC Electronics",
-      productName: "Samsung Galaxy S24",
-      quantity: "2",
-      deliveryDate: "2024-09-25",
-      deliveryAddress: "123 Main St, Mumbai, Maharashtra 400001",
-      dispatchType: "Express"
-    },
-    {
-      id: "DC002",
-      challanId: "DC002",
-      orderId: "SO002",
-      customerName: "XYZ Furniture",
-      productName: "Office Chair",
-      quantity: "1",
-      deliveryDate: "2024-09-22",
-      deliveryAddress: "456 Park Ave, Delhi, Delhi 110001",
-      dispatchType: "Standard"
-    },
-    {
-      id: "DC003",
-      challanId: "DC003",
-      orderId: "SO003",
-      customerName: "Tech Solutions",
-      productName: "LED TV 43",
-      quantity: "1",
-      deliveryDate: "2024-09-28",
-      deliveryAddress: "789 Tech Park, Bangalore, Karnataka 560001",
-      dispatchType: "Scheduled"
+  // Delivery Challans data - fetched from API
+  const [challanData, setChallanData] = useState([]);
+
+  // Fetch delivery challans on mount
+  useEffect(() => {
+    fetchDeliveryChallans();
+  }, []);
+
+  const fetchDeliveryChallans = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getAllDeliveryChallans();
+      const fetchedData = Array.isArray(response?.data) ? response.data :
+                         (Array.isArray(response) ? response : []);
+      setChallanData(fetchedData);
+    } catch (err) {
+      console.error('Error fetching delivery challans:', err);
+      setError(err?.response?.data?.message || err.message || 'Failed to fetch delivery challans');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   // Handlers
   const handleView = (row) => { setViewData(row); setViewShow(true); };
   const handleEdit = (row) => { setEditData(row); setEditShow(true); };
   const handleShowDelete = (id) => { 
-    const rowData = challanData.find(row => row.challanId === id);
-    setDeleteId(id); 
+    const rowData = challanData.find(row => row.challanNumber === id || row._id === id || row.id === id);
     setDeleteData(rowData);
     setDeleteShow(true); 
   };
   const handleCreateOpen = () => setCreateShow(true);
   const handleClose = () => { setViewShow(false); setEditShow(false); setDeleteShow(false); setCreateShow(false); };
 
-  const handleCreate = (newChallan) => {
-    const nextId = challanData.length + 1;
-    const newChallanData = {
-      ...newChallan,
-      id: `DC${String(nextId).padStart(3, '0')}`,
-      challanId: `DC${String(nextId).padStart(3, '0')}`
-    };
-    setChallanData([...challanData, newChallanData]);
-    setCreateShow(false);
+  const handleCreate = async (newChallan) => {
+    try {
+      setLoading(true);
+      await createDeliveryChallan(newChallan);
+      await fetchDeliveryChallans();
+      setCreateShow(false);
+      setError(null);
+    } catch (err) {
+      console.error('Error creating delivery challan:', err);
+      setError(err?.response?.data?.message || err.message || 'Failed to create delivery challan');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUpdate = (updatedChallan) => {
-    setChallanData(challanData.map(row => 
-      row.challanId === updatedChallan.challanId 
-        ? { ...updatedChallan }
-        : row
-    ));
+  const handleUpdate = async (updatedChallan) => {
+    try {
+      setLoading(true);
+      const challanId = editData?._id || editData?.id;
+      await updateDeliveryChallan(challanId, updatedChallan);
+      await fetchDeliveryChallans();
+      setEditShow(false);
+      setEditData(null);
+      setError(null);
+    } catch (err) {
+      console.error('Error updating delivery challan:', err);
+      setError(err?.response?.data?.message || err.message || 'Failed to update delivery challan');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = () => {
-    setChallanData(challanData.filter(row => row.challanId !== deleteId));
-    setDeleteShow(false);
-    setDeleteData(null);
-    setDeleteId(null);
+  const handleDelete = async () => {
+    try {
+      setLoading(true);
+      const challanId = deleteData?._id || deleteData?.id;
+      await deleteDeliveryChallan(challanId);
+      await fetchDeliveryChallans();
+      setDeleteShow(false);
+      setDeleteData(null);
+      setError(null);
+    } catch (err) {
+      console.error('Error deleting delivery challan:', err);
+      setError(err?.response?.data?.message || err.message || 'Failed to delete delivery challan');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filter data
@@ -142,8 +155,26 @@ const DeliveryChallans = () => {
     }
   };
 
+  // Loading state
+  if (loading && challanData.length === 0) {
+    return (
+      <div className="content-area">
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+          <CircularProgress />
+        </Box>
+      </div>
+    );
+  }
+
   return (
     <div className="content-area">
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
       {/* Header with Search and Create Button */}
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2, mb: 3 }}>
         <TextField
@@ -192,72 +223,92 @@ const DeliveryChallans = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {currentPageData.map((row, index) => (
-              <TableRow key={row.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
-                <TableCell>{page * rowsPerPage + index + 1}</TableCell>
-                <TableCell align="left">
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-                    {row.challanId}
+            {currentPageData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                  <Typography variant="body1" color="text.secondary">
+                    No delivery challans found
                   </Typography>
-                </TableCell>
-                <TableCell align="left">
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.orderId}
-                  </Typography>
-                </TableCell>
-                <TableCell align="left">
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.customerName}
-                  </Typography>
-                </TableCell>
-                <TableCell align="left">
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.productName}
-                  </Typography>
-                </TableCell>
-                <TableCell align="left">
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.quantity}
-                  </Typography>
-                </TableCell>
-                <TableCell align="left">{row.deliveryDate}</TableCell>
-                <TableCell align="left">
-                  <Chip
-                    label={row.dispatchType}
-                    size="small"
-                    sx={{
-                      ...getDispatchTypeColor(row.dispatchType),
-                      fontWeight: 500
-                    }}
-                  />
-                </TableCell>
-                <TableCell align="center">
-                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleView(row)}
-                      sx={{ color: '#1976d2' }}
-                    >
-                      <VisibilityOutlined />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEdit(row)}
-                      sx={{ color: '#000' }}
-                    >
-                      <EditOutlined />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleShowDelete(row.challanId)}
-                      sx={{ color: '#f44336' }}
-                    >
-                      <DeleteOutlined />
-                    </IconButton>
-                  </Box>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              currentPageData.map((row, index) => {
+                const challanNum = row.challanNumber || row.challanId || 'N/A';
+                const orderNum = row.orderId?.orderNumber || row.orderNumber || row.orderId || 'N/A';
+                const customerName = row.customerId?.name || row.customerId?.customerName || row.customerName || 'N/A';
+                const deliveryDate = row.deliveryDate ? new Date(row.deliveryDate).toLocaleDateString() : 'N/A';
+                const status = row.status || row.dispatchType || 'Standard';
+                const rowId = row._id || row.id || index;
+                const totalQty = row.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || row.quantity || 0;
+                
+                return (
+                  <TableRow key={rowId} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
+                    <TableCell>{page * rowsPerPage + index + 1}</TableCell>
+                    <TableCell align="left">
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+                        {challanNum}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="left">
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {orderNum}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="left">
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {customerName}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="left">
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {row.items && row.items.length > 0 ? `${row.items.length} item(s)` : (row.productName || 'N/A')}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="left">
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {totalQty}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="left">{deliveryDate}</TableCell>
+                    <TableCell align="left">
+                      <Chip
+                        label={status}
+                        size="small"
+                        sx={{
+                          ...getDispatchTypeColor(status),
+                          fontWeight: 500
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleView(row)}
+                          sx={{ color: '#1976d2' }}
+                        >
+                          <VisibilityOutlined />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEdit(row)}
+                          sx={{ color: '#000' }}
+                        >
+                          <EditOutlined />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleShowDelete(row._id || row.id)}
+                          sx={{ color: '#f44336' }}
+                        >
+                          <DeleteOutlined />
+                        </IconButton>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </Box>

@@ -203,7 +203,7 @@ export const getDamageRecordsByStatus = async (req, res) => {
 export const getAllDamageReceipts = async (req, res) => {
   try {
     const { page, limit } = getPaginationParams(req.query);
-    
+
     const { data, pagination } = await executePaginatedQuery(
       DamageReceiptModel,
       {},
@@ -212,15 +212,15 @@ export const getAllDamageReceipts = async (req, res) => {
           { path: 'damageId' },
           { path: 'itemId', select: 'name sku' },
           { path: 'warehouseId', select: 'name location' },
-          { path: 'receivedBy', select: 'name email' },
-          { path: 'verifiedBy', select: 'name email' }
+          { path: 'createdBy', select: 'name email' },
+          { path: 'reviewedBy', select: 'name email' }
         ],
         sort: { createdAt: -1 }
       },
       page,
       limit
     );
-    
+
     res.json(createPaginatedResponse(data, pagination, 'Damage receipts fetched successfully'));
   } catch (error) {
     res.status(500).json(createErrorResponse('Error fetching damage receipts', error));
@@ -234,8 +234,8 @@ export const getDamageReceiptById = async (req, res) => {
       .populate('damageId')
       .populate('itemId', 'name sku')
       .populate('warehouseId', 'name location')
-      .populate('receivedBy', 'name email')
-      .populate('verifiedBy', 'name email');
+      .populate('createdBy', 'name email')
+      .populate('reviewedBy', 'name email');
     if (!receipt) {
       return res.status(404).json({
         success: false,

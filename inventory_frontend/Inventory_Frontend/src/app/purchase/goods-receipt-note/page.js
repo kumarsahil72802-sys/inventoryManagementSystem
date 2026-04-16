@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Table,
@@ -23,17 +23,17 @@ import EditOutlined from '@mui/icons-material/EditOutlined';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
 import CommonDialog from "@/components/CommonDialog";
-import CreateGoodsReceiptNote from "@/components/Purchase Management/Goods Reciept Note/Create";
-import ViewGoodsReceiptNote from "@/components/Purchase Management/Goods Reciept Note/View";
-import EditGoodsReceiptNote from "@/components/Purchase Management/Goods Reciept Note/Edit";
-import DeleteGoodsReceiptNote from "@/components/Purchase Management/Goods Reciept Note/Delete";
+import { getAllGoodsReceiptNotes, createGoodsReceiptNote, updateGoodsReceiptNote, deleteGoodsReceiptNote } from '@/lib/purchaseApi';
+import { CircularProgress, Alert } from '@mui/material';
+import CreateGoodsReceiptNote from "@/components/purchase-management/Goods Reciept Note/Create";
+import ViewGoodsReceiptNote from "@/components/purchase-management/Goods Reciept Note/View";
+import EditGoodsReceiptNote from "@/components/purchase-management/Goods Reciept Note/Edit";
+import DeleteGoodsReceiptNote from "@/components/purchase-management/Goods Reciept Note/Delete";
 
 export default function GoodsReceiptNoteTable() {
-  const [rows, setRows] = useState([
-    createData(1, "GRN001", "2024-01-15", "ABC Suppliers", "Laptop Pro 15", 5, 250000, "Received"),
-    createData(2, "GRN002", "2024-01-16", "XYZ Electronics", "Office Chair", 10, 30000, "Pending"),
-    createData(3, "GRN003", "2024-01-17", "Tech Solutions", "LED TV 43", 3, 66000, "Verified"),
-  ]);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [viewShow, setViewShow] = useState(false);
   const [editShow, setEditShow] = useState(false);
@@ -48,6 +48,29 @@ export default function GoodsReceiptNoteTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage] = useState(5);
+
+  // Fetch goods receipt notes on component mount
+  useEffect(() => {
+    const fetchGoodsReceiptNotes = async () => {
+      try {
+        setLoading(true);
+        const response = await getAllGoodsReceiptNotes();
+        const fetchedData = Array.isArray(response?.data) ? response.data :
+                           (Array.isArray(response) ? response : []);
+        setRows(fetchedData.map((note, index) => ({
+          ...note,
+          si: index + 1
+        })));
+        setError(null);
+      } catch (err) {
+        setError(err?.response?.data?.message || err.message || 'Failed to fetch goods receipt notes');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGoodsReceiptNotes();
+  }, []);
 
   function createData(si, receiptId, receiptDate, supplierName, productName, quantity, totalAmount, status) {
     return {
@@ -67,31 +90,58 @@ export default function GoodsReceiptNoteTable() {
   const handleCreateOpen = () => setCreateShow(true);
   const handleClose = () => { setViewShow(false); setEditShow(false); setDeleteShow(false); setCreateShow(false); };
 
-  const handleCreate = (newReceipt) => {
-    const nextSi = rows.length + 1;
-    const newReceiptData = {
-      ...newReceipt,
-      si: nextSi,
-      receiptId: `GRN${String(nextSi).padStart(3, '0')}`,
-      action: null
-    };
-    setRows([...rows, newReceiptData]);
-    setCreateShow(false);
+  const handleCreate = async (newReceipt) => {
+    try {
+      await createGoodsReceiptNote(newReceipt);
+      
+      // Refresh the goods receipt notes list
+      const response = await getAllGoodsReceiptNotes();
+      const fetchedData = Array.isArray(response?.data) ? response.data :
+                         (Array.isArray(response) ? response : []);
+      setRows(fetchedData.map((note, index) => ({
+        ...note,
+        si: index + 1
+      })));
+      handleClose();
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to create goods receipt note');
+    }
   };
 
-  const handleUpdate = (updatedReceipt) => {
-    setRows(rows.map(row => 
-      row.receiptId === updatedReceipt.receiptId 
-        ? { ...updatedReceipt, action: null }
-        : row
-    ));
+  const handleUpdate = async (updatedReceipt) => {
+    try {
+      await updateGoodsReceiptNote(updatedReceipt._id || updatedReceipt.id, updatedReceipt);
+      
+      // Refresh the goods receipt notes list
+      const response = await getAllGoodsReceiptNotes();
+      const fetchedData = Array.isArray(response?.data) ? response.data :
+                         (Array.isArray(response) ? response : []);
+      setRows(fetchedData.map((note, index) => ({
+        ...note,
+        si: index + 1
+      })));
+      handleClose();
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to update goods receipt note');
+    }
   };
 
-  const handleDelete = () => {
-    setRows(rows.filter(row => row.receiptId !== deleteId));
-    setDeleteShow(false);
-    setDeleteData(null);
-    setDeleteId(null);
+  const handleDelete = async () => {
+    try {
+      await deleteGoodsReceiptNote(deleteData._id || deleteData.id);
+      
+      // Refresh the goods receipt notes list
+      const response = await getAllGoodsReceiptNotes();
+      const fetchedData = Array.isArray(response?.data) ? response.data :
+                         (Array.isArray(response) ? response : []);
+      setRows(fetchedData.map((note, index) => ({
+        ...note,
+        si: index + 1
+      })));
+      handleClose();
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to delete goods receipt note');
+    }
   };
 
   const filteredRows = rows.filter(row =>
@@ -105,6 +155,22 @@ export default function GoodsReceiptNoteTable() {
   const handlePageChange = (event, newPage) => {
     setPage(newPage - 1);
   };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
 
   return (
     <div className="content-area">

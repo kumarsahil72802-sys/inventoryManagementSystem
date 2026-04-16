@@ -8,18 +8,29 @@ import {
   Typography,
   Chip,
 } from "@mui/material";
-import { getCategories } from '../../app/item/sharedData';
+import { fetchCategories } from '../../lib/itemApi';
 
 const ViewSubcategory = ({ subcategoryData, onClose, onEdit, onDelete }) => {
   const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setCategories(getCategories());
+    const loadCategories = async () => {
+      try {
+        const data = await fetchCategories();
+        setCategories(data);
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCategories();
   }, []);
 
   const getCategoryName = (categoryId) => {
     const category = categories.find(cat => cat.id === categoryId);
-    return category ? category.categoryName : 'Unknown';
+    return category ? (category.categoryName || category.name) : 'Unknown';
   };
 
   const getStatusColor = (status) => {

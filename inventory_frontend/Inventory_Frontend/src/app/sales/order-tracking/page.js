@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Table,
@@ -16,6 +16,8 @@ import {
   Button,
   Chip,
   Stack,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import { Search, Add, VisibilityOutlined, EditOutlined, DeleteOutlined } from "@mui/icons-material";
 import CommonDialog from "@/components/CommonDialog";
@@ -23,11 +25,14 @@ import CreateOrderTracking from "@/components/sales/order-tracking/Create";
 import ViewOrderTracking from "@/components/sales/order-tracking/View";
 import EditOrderTracking from "@/components/sales/order-tracking/Edit";
 import DeleteOrderTracking from "@/components/sales/order-tracking/Delete";
+import { getAllOrderTracking, createOrderTracking, updateOrderTracking, deleteOrderTracking } from "@/lib/salesApi";
 
 const OrderTracking = () => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage] = useState(10);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Dialog states
   const [createShow, setCreateShow] = useState(false);
@@ -36,85 +41,90 @@ const OrderTracking = () => {
   const [deleteShow, setDeleteShow] = useState(false);
   const [viewData, setViewData] = useState(null);
   const [editData, setEditData] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
   const [deleteData, setDeleteData] = useState(null);
 
-  // Order Tracking data - simplified
-  const [trackingData, setTrackingData] = useState([
-    {
-      id: "OT001",
-      trackingId: "OT001",
-      orderId: "SO001",
-      orderDate: "2024-09-20",
-      customerName: "ABC Electronics",
-      productName: "Samsung Galaxy S24",
-      currentStatus: "In Transit",
-      warehouse: "Main Warehouse",
-      estimatedDelivery: "2024-09-25",
-      status: "Active"
-    },
-    {
-      id: "OT002",
-      trackingId: "OT002",
-      orderId: "SO002",
-      orderDate: "2024-09-18",
-      customerName: "XYZ Furniture",
-      productName: "Office Chair",
-      currentStatus: "Delivered",
-      warehouse: "North Warehouse",
-      estimatedDelivery: "2024-09-22",
-      status: "Completed"
-    },
-    {
-      id: "OT003",
-      trackingId: "OT003",
-      orderId: "SO003",
-      orderDate: "2024-09-22",
-      customerName: "Tech Solutions",
-      productName: "LED TV 43",
-      currentStatus: "Processing",
-      warehouse: "South Warehouse",
-      estimatedDelivery: "2024-09-28",
-      status: "Active"
+  // Order Tracking data - fetched from API
+  const [trackingData, setTrackingData] = useState([]);
+
+  // Fetch order tracking on mount
+  useEffect(() => {
+    fetchOrderTracking();
+  }, []);
+
+  const fetchOrderTracking = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getAllOrderTracking();
+      const fetchedData = Array.isArray(response?.data) ? response.data :
+                         (Array.isArray(response) ? response : []);
+      setTrackingData(fetchedData);
+    } catch (err) {
+      console.error('Error fetching order tracking:', err);
+      setError(err?.response?.data?.message || err.message || 'Failed to fetch order tracking');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   // Handlers
   const handleView = (row) => { setViewData(row); setViewShow(true); };
   const handleEdit = (row) => { setEditData(row); setEditShow(true); };
   const handleShowDelete = (id) => { 
-    const rowData = trackingData.find(row => row.trackingId === id);
-    setDeleteId(id); 
+    const rowData = trackingData.find(row => row.trackingNumber === id || row._id === id || row.id === id);
     setDeleteData(rowData);
     setDeleteShow(true); 
   };
   const handleCreateOpen = () => setCreateShow(true);
   const handleClose = () => { setViewShow(false); setEditShow(false); setDeleteShow(false); setCreateShow(false); };
 
-  const handleCreate = (newTracking) => {
-    const nextId = trackingData.length + 1;
-    const newTrackingData = {
-      ...newTracking,
-      id: `OT${String(nextId).padStart(3, '0')}`,
-      trackingId: `OT${String(nextId).padStart(3, '0')}`
-    };
-    setTrackingData([...trackingData, newTrackingData]);
-    setCreateShow(false);
+  const handleCreate = async (newTracking) => {
+    try {
+      setLoading(true);
+      await createOrderTracking(newTracking);
+      await fetchOrderTracking();
+      setCreateShow(false);
+      setError(null);
+    } catch (err) {
+      console.error('Error creating order tracking:', err);
+      setError(err?.response?.data?.message || err.message || 'Failed to create order tracking');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUpdate = (updatedTracking) => {
-    setTrackingData(trackingData.map(row => 
-      row.trackingId === updatedTracking.trackingId 
-        ? { ...updatedTracking }
-        : row
-    ));
+  const handleUpdate = async (updatedTracking) => {
+    try {
+      setLoading(true);
+      const trackingId = editData?._id || editData?.id;
+      await updateOrderTracking(trackingId, updatedTracking);
+      await fetchOrderTracking();
+      setEditShow(false);
+      setEditData(null);
+      setError(null);
+    } catch (err) {
+      console.error('Error updating order tracking:', err);
+      setError(err?.response?.data?.message || err.message || 'Failed to update order tracking');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = () => {
-    setTrackingData(trackingData.filter(row => row.trackingId !== deleteId));
-    setDeleteShow(false);
-    setDeleteData(null);
-    setDeleteId(null);
+  const handleDelete = async () => {
+    try {
+      setLoading(true);
+      const trackingId = deleteData?._id || deleteData?.id;
+      await deleteOrderTracking(trackingId);
+      await fetchOrderTracking();
+      setDeleteShow(false);
+      setDeleteData(null);
+      setError(null);
+    } catch (err) {
+      console.error('Error deleting order tracking:', err);
+      setError(err?.response?.data?.message || err.message || 'Failed to delete order tracking');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filter data
@@ -144,8 +154,26 @@ const OrderTracking = () => {
     }
   };
 
+  // Loading state
+  if (loading && trackingData.length === 0) {
+    return (
+      <div className="content-area">
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+          <CircularProgress />
+        </Box>
+      </div>
+    );
+  }
+
   return (
     <div className="content-area">
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
       {/* Header with Search and Create Button */}
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2, mb: 3 }}>
         <TextField
@@ -194,72 +222,93 @@ const OrderTracking = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {currentPageData.map((row, index) => (
-              <TableRow key={row.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
-                <TableCell>{page * rowsPerPage + index + 1}</TableCell>
-                <TableCell align="left">
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-                    {row.trackingId}
+            {currentPageData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                  <Typography variant="body1" color="text.secondary">
+                    No order tracking records found
                   </Typography>
-                </TableCell>
-                <TableCell align="left">
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.orderId}
-                  </Typography>
-                </TableCell>
-                <TableCell align="left">
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.orderDate}
-                  </Typography>
-                </TableCell>
-                <TableCell align="left">
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.customerName}
-                  </Typography>
-                </TableCell>
-                <TableCell align="left">
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.productName}
-                  </Typography>
-                </TableCell>
-                <TableCell align="left">
-                  <Chip
-                    label={row.currentStatus}
-                    size="small"
-                    sx={{
-                      ...getStatusColor(row.currentStatus),
-                      fontWeight: 500
-                    }}
-                  />
-                </TableCell>
-                <TableCell align="left">{row.estimatedDelivery}</TableCell>
-                <TableCell align="center">
-                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleView(row)}
-                      sx={{ color: '#1976d2' }}
-                    >
-                      <VisibilityOutlined />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEdit(row)}
-                      sx={{ color: '#000' }}
-                    >
-                      <EditOutlined />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleShowDelete(row.trackingId)}
-                      sx={{ color: '#f44336' }}
-                    >
-                      <DeleteOutlined />
-                    </IconButton>
-                  </Box>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              currentPageData.map((row, index) => {
+                const trackingNum = row.trackingNumber || row.trackingId || 'N/A';
+                const orderNum = row.orderNumber || row.orderId || 'N/A';
+                const customerName = row.customerId?.name || row.customerId?.customerName || row.customerName || 'N/A';
+                const orderDate = row.orderId?.orderDate ? new Date(row.orderId.orderDate).toLocaleDateString() : 
+                                 (row.orderDate ? new Date(row.orderDate).toLocaleDateString() : 'N/A');
+                const status = row.status || row.currentStatus || 'Pending';
+                const estDelivery = row.estimatedDelivery ? new Date(row.estimatedDelivery).toLocaleDateString() : 'N/A';
+                const rowId = row._id || row.id || index;
+                
+                return (
+                  <TableRow key={rowId} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
+                    <TableCell>{page * rowsPerPage + index + 1}</TableCell>
+                    <TableCell align="left">
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+                        {trackingNum}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="left">
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {orderNum}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="left">
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {orderDate}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="left">
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {customerName}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="left">
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        See Details
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="left">
+                      <Chip
+                        label={status}
+                        size="small"
+                        sx={{
+                          ...getStatusColor(status),
+                          fontWeight: 500
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell align="left">{estDelivery}</TableCell>
+                    <TableCell align="center">
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleView(row)}
+                          sx={{ color: '#1976d2' }}
+                        >
+                          <VisibilityOutlined />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEdit(row)}
+                          sx={{ color: '#000' }}
+                        >
+                          <EditOutlined />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleShowDelete(row._id || row.id)}
+                          sx={{ color: '#f44336' }}
+                        >
+                          <DeleteOutlined />
+                        </IconButton>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
      

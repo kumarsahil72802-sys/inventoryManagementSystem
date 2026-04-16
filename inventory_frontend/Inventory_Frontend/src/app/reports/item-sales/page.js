@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -23,7 +23,8 @@ import {
   MenuItem,
   Stack,
   Divider,
-  Pagination
+  Pagination,
+  CircularProgress
 } from '@mui/material';
 import {
   Search,
@@ -36,87 +37,48 @@ import {
   Assessment,
   AttachMoney
 } from '@mui/icons-material';
+import { getItemSales } from '../../../lib/reportsApi';
 
 export default function ItemWiseSalesReport() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage] = useState(5);
+  const [itemSalesData, setItemSalesData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Sample data for Item-Wise Sales Report
-  const itemSalesData = [
-    {
-      productId: "P001",
-      productName: "Laptop Pro 15",
-      category: "Electronics",
-      totalSold: 25,
-      totalRevenue: 1125000,
-      avgSellingPrice: 45000,
-      profitMargin: 15.5,
-      lastSaleDate: "2024-01-15",
-      salesTrend: "Increasing",
-      topCustomer: "ABC Electronics"
-    },
-    {
-      productId: "P002",
-      productName: "Office Chair",
-      category: "Furniture",
-      totalSold: 45,
-      totalRevenue: 360000,
-      avgSellingPrice: 8000,
-      profitMargin: 22.3,
-      lastSaleDate: "2024-01-14",
-      salesTrend: "Stable",
-      topCustomer: "XYZ Corporation"
-    },
-    {
-      productId: "P003",
-      productName: "LED TV 43",
-      category: "Electronics",
-      totalSold: 12,
-      totalRevenue: 300000,
-      avgSellingPrice: 25000,
-      profitMargin: 18.7,
-      lastSaleDate: "2024-01-13",
-      salesTrend: "Decreasing",
-      topCustomer: "Tech Solutions Ltd"
-    },
-    {
-      productId: "P004",
-      productName: "Printer HP",
-      category: "Electronics",
-      totalSold: 18,
-      totalRevenue: 216000,
-      avgSellingPrice: 12000,
-      profitMargin: 12.8,
-      lastSaleDate: "2024-01-12",
-      salesTrend: "Stable",
-      topCustomer: "Office Supplies Co"
-    },
-    {
-      productId: "P005",
-      productName: "Desk Lamp",
-      category: "Furniture",
-      totalSold: 35,
-      totalRevenue: 87500,
-      avgSellingPrice: 2500,
-      profitMargin: 25.4,
-      lastSaleDate: "2024-01-10",
-      salesTrend: "Increasing",
-      topCustomer: "Home Decor Store"
-    },
-    {
-      productId: "P006",
-      productName: "Wireless Mouse",
-      category: "Electronics",
-      totalSold: 60,
-      totalRevenue: 180000,
-      avgSellingPrice: 3000,
-      profitMargin: 20.1,
-      lastSaleDate: "2024-01-11",
-      salesTrend: "Increasing",
-      topCustomer: "Computer World"
-    }
-  ];
+  // Fetch item sales data from API
+  useEffect(() => {
+    const fetchItemSales = async () => {
+      try {
+        setLoading(true);
+        const response = await getItemSales();
+        // Transform API data to match frontend structure
+        const transformedData = response.data.map(item => ({
+          productId: item.itemId?._id || item.itemId || item.sku || 'N/A',
+          productName: item.itemName || item.itemId?.productName || 'N/A',
+          category: item.category || 'N/A',
+          totalSold: item.totalQuantitySold || 0,
+          totalRevenue: item.totalRevenue || 0,
+          avgSellingPrice: item.averagePrice || 0,
+          profitMargin: 0, // API doesn't provide this, default to 0
+          lastSaleDate: item.updatedAt || item.createdAt || 'N/A',
+          salesTrend: item.salesTrend || 'Stable',
+          topCustomer: 'N/A' // API doesn't provide this
+        }));
+        setItemSalesData(transformedData);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching item sales:', err);
+        setError('Failed to load item sales data');
+        setItemSalesData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchItemSales();
+  }, []);
 
   const filteredData = itemSalesData.filter(item =>
     item.productName.toLowerCase().includes(search.toLowerCase()) ||
@@ -284,53 +246,80 @@ export default function ItemWiseSalesReport() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {currentData.map((row, index) => (
-              <TableRow key={row.productId} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
-                <TableCell>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-                    {row.productId}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.productName}
-                  </Typography>
-                </TableCell>
-                <TableCell>{row.category}</TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500, color: '#2e7d32' }}>
-                    {row.totalSold}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    ₹{row.totalRevenue.toLocaleString()}
-                  </Typography>
-                </TableCell>
-                <TableCell>₹{row.avgSellingPrice.toLocaleString()}</TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500, color: '#2e7d32' }}>
-                    {row.profitMargin}%
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={row.salesTrend}
-                    size="small"
-                    sx={{
-                      ...getTrendColor(row.salesTrend),
-                      fontWeight: 500
-                    }}
-                  />
-                </TableCell>
-                <TableCell>{row.lastSaleDate}</TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.topCustomer}
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                  <CircularProgress />
+                  <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
+                    Loading item sales data...
                   </Typography>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                  <Typography variant="body2" color="error">
+                    {error}
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            ) : currentData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No item sales data available
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            ) : (
+              currentData.map((row, index) => (
+                <TableRow key={row.productId} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
+                  <TableCell>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+                      {row.productId}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {row.productName}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{row.category}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#2e7d32' }}>
+                      {row.totalSold}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      ₹{row.totalRevenue.toLocaleString()}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>₹{row.avgSellingPrice.toLocaleString()}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#2e7d32' }}>
+                      {row.profitMargin}%
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={row.salesTrend}
+                      size="small"
+                      sx={{
+                        ...getTrendColor(row.salesTrend),
+                        fontWeight: 500
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell>{row.lastSaleDate}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {row.topCustomer}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
      

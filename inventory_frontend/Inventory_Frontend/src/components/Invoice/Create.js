@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Grid,
   TextField,
@@ -14,6 +14,9 @@ import {
   Divider,
 } from "@mui/material";
 import { Add, Delete } from "@mui/icons-material";
+import { fetchCustomers } from '../../lib/customerApi';
+import { fetchSuppliers } from '../../lib/supplierApi';
+import { fetchItems } from '../../lib/itemApi';
 
 const CreateInvoice = ({ handleClose, handleCreate }) => {
   const [formData, setFormData] = useState({
@@ -37,10 +40,28 @@ const CreateInvoice = ({ handleClose, handleCreate }) => {
     notes: ""
   });
 
-  const customers = ["Tech Solutions Pvt Ltd", "Office Supplies Co", "Retail Store Chain", "Manufacturing Corp", "Service Provider Ltd"];
-  const suppliers = ["Electronics Hub", "Furniture World", "Kitchen Supplies", "Office Depot", "Industrial Supplies"];
-  const products = ["Samsung Galaxy S24", "Office Chair", "Coffee Mug", "LED TV", "Wireless Mouse", "Keyboard", "Desk Lamp", "Tea Set"];
+  const [customers, setCustomers] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [products, setProducts] = useState([]);
   const paymentTerms = ["Net 7", "Net 15", "Net 30", "Net 45", "Net 60"];
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [customersRes, suppliersRes, productsRes] = await Promise.all([
+          fetchCustomers(),
+          fetchSuppliers(),
+          fetchItems(1, 100)
+        ]);
+        setCustomers(customersRes.data || []);
+        setSuppliers(suppliersRes.data || []);
+        setProducts(productsRes.data || []);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+      }
+    };
+    loadData();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -92,12 +113,21 @@ const CreateInvoice = ({ handleClose, handleCreate }) => {
 
   const handleSave = () => {
     if (!formData.invoiceNumber || !formData.customerName || !formData.supplierName || 
+        !formData.customerEmail || !formData.customerPhone || !formData.billingAddress ||
         !formData.invoiceDate || !formData.dueDate || formData.items.some(item => 
         !item.productName || !item.quantity || !item.unitPrice)) {
-      alert('Please fill all required fields');
+      alert('Please fill all required fields including Customer Email, Phone and Billing Address');
       return;
     }
-    handleCreate(formData);
+    
+    // Add required fields for backend
+    const invoiceData = {
+      ...formData,
+      id: formData.invoiceNumber, // Use invoiceNumber as the unique id
+      createdBy: 'admin' // TODO: Get from auth context when available
+    };
+    
+    handleCreate(invoiceData);
     handleClose();
   };
 
@@ -179,8 +209,8 @@ const CreateInvoice = ({ handleClose, handleCreate }) => {
             onChange={handleChange}
           >
             {customers.map((customer) => (
-              <MenuItem key={customer} value={customer}>
-                {customer}
+              <MenuItem key={customer.id || customer._id || customer.customerName} value={customer.customerName || customer.name}>
+                {customer.customerName || customer.name}
               </MenuItem>
             ))}
           </Select>
@@ -194,6 +224,7 @@ const CreateInvoice = ({ handleClose, handleCreate }) => {
           name="customerEmail"
           value={formData.customerEmail}
           onChange={handleChange}
+          required
         />
       </Grid>
       
@@ -204,6 +235,7 @@ const CreateInvoice = ({ handleClose, handleCreate }) => {
           name="customerPhone"
           value={formData.customerPhone}
           onChange={handleChange}
+          required
         />
       </Grid>
       <Grid size={6}>
@@ -215,6 +247,7 @@ const CreateInvoice = ({ handleClose, handleCreate }) => {
           onChange={handleChange}
           multiline
           rows={2}
+          required
         />
       </Grid>
 
@@ -235,8 +268,8 @@ const CreateInvoice = ({ handleClose, handleCreate }) => {
             onChange={handleChange}
           >
             {suppliers.map((supplier) => (
-              <MenuItem key={supplier} value={supplier}>
-                {supplier}
+              <MenuItem key={supplier.id || supplier._id || supplier.supplierName} value={supplier.supplierName || supplier.name}>
+                {supplier.supplierName || supplier.name}
               </MenuItem>
             ))}
           </Select>
@@ -303,8 +336,8 @@ const CreateInvoice = ({ handleClose, handleCreate }) => {
                 onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
               >
                 {products.map((product) => (
-                  <MenuItem key={product} value={product}>
-                    {product}
+                  <MenuItem key={product.id || product._id} value={product.productName || product.name}>
+                    {product.productName || product.name}
                   </MenuItem>
                 ))}
               </Select>

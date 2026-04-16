@@ -255,17 +255,21 @@ router.route('/valuation/:id').get(verifyToken, getValuationById).put(verifyToke
 
 // Damage records
 router.route('/damage').get(verifyToken, getAllDamageRecords).post(verifyToken, createDamageRecord);
-router.route('/damage/:id').get(verifyToken, getDamageRecordById).put(verifyToken, updateDamageRecord).delete(verifyToken, deleteDamageRecord);
-router.route('/damage/warehouse/:warehouseId').get(verifyToken, getDamageRecordsByWarehouse);
-router.route('/damage/status/:status').get(verifyToken, getDamageRecordsByStatus);
 
-// Damage Receipts
+// Damage Receipts - Must be defined BEFORE /damage/:id to avoid being caught as ID parameter
 router.route('/damage/receipts').get(verifyToken, getAllDamageReceipts).post(verifyToken, createDamageReceipt);
 router.route('/damage/receipts/:id').get(verifyToken, getDamageReceiptById).put(verifyToken, updateDamageReceipt).delete(verifyToken, deleteDamageReceipt);
 
-// Write-offs
+// Write-offs - Must be defined BEFORE /damage/:id to avoid being caught as ID parameter
 router.route('/damage/write-offs').get(verifyToken, getAllWriteOffs).post(verifyToken, createWriteOff);
 router.route('/damage/write-offs/:id').get(verifyToken, getWriteOffById).put(verifyToken, updateWriteOff).delete(verifyToken, deleteWriteOff);
+
+// Damage record sub-routes - Must be defined BEFORE /damage/:id
+router.route('/damage/warehouse/:warehouseId').get(verifyToken, getDamageRecordsByWarehouse);
+router.route('/damage/status/:status').get(verifyToken, getDamageRecordsByStatus);
+
+// Generic /damage/:id route - Must be defined AFTER all specific sub-routes
+router.route('/damage/:id').get(verifyToken, getDamageRecordById).put(verifyToken, updateDamageRecord).delete(verifyToken, deleteDamageRecord);
 
 // ================================
 // INVOICE MANAGEMENT ROUTES
@@ -273,9 +277,13 @@ router.route('/damage/write-offs/:id').get(verifyToken, getWriteOffById).put(ver
 
 // Invoice operations
 router.route('/invoices').get(verifyToken, getAllInvoices).post(verifyToken, createInvoice);
-router.route('/invoices/:id').get(verifyToken, getInvoiceById).put(verifyToken, updateInvoice).delete(verifyToken, deleteInvoice);
+
+// Specific invoice sub-routes - Must be defined BEFORE /invoices/:id
 router.route('/invoices/customer/:customerId').get(verifyToken, getInvoicesByCustomer);
 router.route('/invoices/payment-status/:paymentStatus').get(verifyToken, getInvoicesByPaymentStatus);
+
+// Generic /invoices/:id routes - Must be defined AFTER all specific sub-routes
+router.route('/invoices/:id').get(verifyToken, getInvoiceById).put(verifyToken, updateInvoice).delete(verifyToken, deleteInvoice);
 router.route('/invoices/:id/payment-status').put(verifyToken, updatePaymentStatus);
 
 // ================================

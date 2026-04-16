@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -24,7 +24,8 @@ import {
   MenuItem,
   Stack,
   Divider,
-  Pagination
+  Pagination,
+  CircularProgress
 } from '@mui/material';
 import {
   Search,
@@ -36,80 +37,49 @@ import {
   Inventory,
   Assessment
 } from '@mui/icons-material';
+import { getStockSummary } from '../../../lib/reportsApi';
 
 export default function StockSummaryReport() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage] = useState(5);
+  const [stockSummaryData, setStockSummaryData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Sample data for Stock Summary Report
-  const stockSummaryData = [
-    {
-      productId: "P001",
-      productName: "Laptop Pro 15",
-      category: "Electronics",
-      currentStock: 45,
-      reservedStock: 12,
-      availableStock: 33,
-      unitCost: 45000,
-      totalValue: 1485000,
-      lastMovement: "2024-01-15",
-      status: "In Stock",
-      warehouse: "Main Warehouse"
-    },
-    {
-      productId: "P002", 
-      productName: "Office Chair",
-      category: "Furniture",
-      currentStock: 25,
-      reservedStock: 5,
-      availableStock: 20,
-      unitCost: 8000,
-      totalValue: 160000,
-      lastMovement: "2024-01-14",
-      status: "Low Stock",
-      warehouse: "Main Warehouse"
-    },
-    {
-      productId: "P003",
-      productName: "LED TV 43",
-      category: "Electronics", 
-      currentStock: 8,
-      reservedStock: 3,
-      availableStock: 5,
-      unitCost: 25000,
-      totalValue: 125000,
-      lastMovement: "2024-01-13",
-      status: "Critical",
-      warehouse: "Main Warehouse"
-    },
-    {
-      productId: "P004",
-      productName: "Printer HP",
-      category: "Electronics",
-      currentStock: 15,
-      reservedStock: 2,
-      availableStock: 13,
-      unitCost: 12000,
-      totalValue: 156000,
-      lastMovement: "2024-01-12",
-      status: "In Stock",
-      warehouse: "Branch Warehouse"
-    },
-    {
-      productId: "P005",
-      productName: "Desk Lamp",
-      category: "Furniture",
-      currentStock: 0,
-      reservedStock: 0,
-      availableStock: 0,
-      unitCost: 2500,
-      totalValue: 0,
-      lastMovement: "2024-01-10",
-      status: "Out of Stock",
-      warehouse: "Main Warehouse"
-    }
-  ];
+  // Fetch stock summary data from API
+  useEffect(() => {
+    const fetchStockSummary = async () => {
+      try {
+        setLoading(true);
+        const response = await getStockSummary();
+        // Transform API data to match frontend structure
+        const transformedData = response.data.map(item => ({
+          productId: item.itemId?._id || item.itemId || item.sku || 'N/A',
+          productName: item.itemName || item.itemId?.productName || 'N/A',
+          category: item.category || 'N/A',
+          currentStock: item.currentStock || 0,
+          reservedStock: 0, // API doesn't provide this, default to 0
+          availableStock: item.currentStock || 0,
+          unitCost: item.costPrice || 0,
+          totalValue: item.totalValue || 0,
+          lastMovement: item.updatedAt || item.createdAt || 'N/A',
+          status: item.stockStatus || 'In Stock',
+          warehouse: item.warehouse || 'N/A'
+        }));
+        setStockSummaryData(transformedData);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching stock summary:', err);
+        setError('Failed to load stock summary data');
+        setStockSummaryData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStockSummary();
+  }, []);
 
   const filteredData = stockSummaryData.filter(item =>
     item.productName.toLowerCase().includes(search.toLowerCase()) ||
@@ -279,49 +249,76 @@ export default function StockSummaryReport() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {currentData.map((row, index) => (
-              <TableRow key={row.productId} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
-                <TableCell>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-                    {row.productId}
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                  <CircularProgress />
+                  <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
+                    Loading stock summary data...
                   </Typography>
                 </TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.productName}
-                  </Typography>
-                </TableCell>
-                <TableCell>{row.category}</TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.currentStock}
-                  </Typography>
-                </TableCell>
-                <TableCell>{row.reservedStock}</TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500, color: '#2e7d32' }}>
-                    {row.availableStock}
-                  </Typography>
-                </TableCell>
-                <TableCell>₹{row.unitCost.toLocaleString()}</TableCell>
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    ₹{row.totalValue.toLocaleString()}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={row.status}
-                    size="small"
-                    sx={{
-                      ...getStatusColor(row.status),
-                      fontWeight: 500
-                    }}
-                  />
-                </TableCell>
-                <TableCell>{row.lastMovement}</TableCell>
               </TableRow>
-            ))}
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                  <Typography variant="body2" color="error">
+                    {error}
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            ) : currentData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No stock summary data available
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            ) : (
+              currentData.map((row, index) => (
+                <TableRow key={row.productId} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
+                  <TableCell>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+                      {row.productId}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {row.productName}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{row.category}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {row.currentStock}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{row.reservedStock}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#2e7d32' }}>
+                      {row.availableStock}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>₹{row.unitCost.toLocaleString()}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      ₹{row.totalValue.toLocaleString()}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={row.status}
+                      size="small"
+                      sx={{
+                        ...getStatusColor(row.status),
+                        fontWeight: 500
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell>{row.lastMovement}</TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
     

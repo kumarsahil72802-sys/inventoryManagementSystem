@@ -16,7 +16,9 @@ import {
   Chip,
   Pagination,
   Stack,
-  CircularProgress
+  CircularProgress,
+  Alert,
+  Snackbar
 } from '@mui/material';
 import {
   Add,
@@ -45,6 +47,7 @@ export default function Expense() {
   const [loading, setLoading] = useState(false);
   const [expenses, setExpenses] = useState([]);
   const [errors, setErrors] = useState({});
+  const [networkError, setNetworkError] = useState(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -66,12 +69,14 @@ export default function Expense() {
   const fetchExpenses = async () => {
     try {
       setLoading(true);
+      setNetworkError(null);
       const response = await getAllExpenses();
       if (response.success) {
         setExpenses(response.data);
       }
     } catch (error) {
       console.error("Error fetching expenses:", error);
+      setNetworkError(error.message || "Failed to fetch expenses");
     } finally {
       setLoading(false);
     }
@@ -247,6 +252,11 @@ export default function Expense() {
         </Button>
       </Box>
 
+      {networkError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {networkError}
+        </Alert>
+      )}
       {loading && expenses.length === 0 ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>
       ) : (

@@ -264,9 +264,13 @@ export async function deleteCategory(id) {
 
 export function subcategoryFromApi(data) {
   if (!data) return null;
+  const categoryRef = data.category;
+  const normalizedCategoryId = typeof categoryRef === "object" && categoryRef !== null
+    ? (categoryRef._id || categoryRef.id || categoryRef.categoryId)
+    : categoryRef;
   return {
-    id: data._id,
-    categoryId: data.category?._id || data.category,
+    id: data._id || data.id,
+    categoryId: normalizedCategoryId,
     subCategoryName: data.name,
     name: data.name,
     description: data.description,
@@ -284,19 +288,11 @@ function subcategoryToApi(form) {
 }
 
 export async function fetchSubcategories(categoryId) {
-  const res = await fetchWithAuth("/subcategories");
+  const url = categoryId ? `/subcategories?category=${categoryId}` : "/subcategories";
+  const res = await fetchWithAuth(url);
   const json = await res.json();
   if (!json.success) throw new Error(json.message || "Failed to fetch subcategories");
-  let list = json.data || [];
-  if (categoryId) {
-    const catIdStr = String(categoryId);
-    list = list.filter((s) => {
-      const c = s.category;
-      const refId = c && (typeof c === "object" && c !== null && "_id" in c ? c._id : c);
-      return refId && String(refId) === catIdStr;
-    });
-  }
-  return list.map((s) => subcategoryFromApi(s));
+  return (json.data || []).map((s) => subcategoryFromApi(s));
 }
 
 export async function createSubcategory(payload) {

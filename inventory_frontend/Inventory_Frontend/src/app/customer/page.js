@@ -17,10 +17,10 @@ import {
 } from "@mui/material";
 import { Search, Add, VisibilityOutlined, EditOutlined, DeleteOutlined } from "@mui/icons-material";
 import CommonDialog from '../../components/CommonDialog';
-import CreateCustomer from '../../components/Customer Management/Create';
-import EditCustomer from '../../components/Customer Management/Edit';
-import ViewCustomer from '../../components/Customer Management/View';
-import DeleteCustomer from '../../components/Customer Management/Delete';
+import CreateCustomer from '../../components/customer-management/Create';
+import EditCustomer from '../../components/customer-management/Edit';
+import ViewCustomer from '../../components/customer-management/View';
+import DeleteCustomer from '../../components/customer-management/Delete';
 import { fetchCustomers, createCustomer, updateCustomer, deleteCustomer, customerFromApi } from '../../lib/customerApi';
 
 const Customer = () => {

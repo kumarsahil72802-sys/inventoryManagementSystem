@@ -1,6 +1,7 @@
 "use client";
-import { Button, Grid, TextField, Typography, Divider, MenuItem, Box } from "@mui/material";
-import { useState } from "react";
+import { Button, Grid, TextField, Typography, Divider, MenuItem, Box, FormControl, InputLabel, Select } from "@mui/material";
+import { useState, useEffect } from "react";
+import { fetchSubcategories } from "../../../lib/itemApi";
 
 const CreateProduct = ({onClose,onSave}) => {
     const [formData,setFormData]=useState({
@@ -37,7 +38,20 @@ const CreateProduct = ({onClose,onSave}) => {
         variantStock:""
     });
 
+    const [subcategories, setSubcategories] = useState([]);
     const [errors, setErrors] = useState({});
+
+    useEffect(() => {
+        const loadSubcategories = async () => {
+            try {
+                const data = await fetchSubcategories();
+                setSubcategories(data);
+            } catch (error) {
+                console.error('Failed to fetch subcategories:', error);
+            }
+        };
+        loadSubcategories();
+    }, []);
 
     const validate = () => {
         let tempErrors = {};
@@ -115,12 +129,21 @@ return (
                 />
             </Grid>
             <Grid item xs={6}>
-                <TextField
-                    fullWidth
-                    label="5) Sub Category Name"
-                    name="subCategoryName"
-                    value={formData.subCategoryName}
-                    onChange={handleChange}/>
+                <FormControl fullWidth>
+                    <InputLabel>5) Sub Category Name</InputLabel>
+                    <Select
+                        name="subCategoryName"
+                        value={formData.subCategoryName}
+                        onChange={handleChange}
+                        label="5) Sub Category Name">
+                        <MenuItem value="">Select subcategory</MenuItem>
+                        {subcategories.map((subcategory) => (
+                            <MenuItem key={subcategory.id} value={subcategory.subCategoryName || subcategory.name}>
+                                {subcategory.subCategoryName || subcategory.name}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
             </Grid>
             <Grid item xs={6}>
                 <TextField

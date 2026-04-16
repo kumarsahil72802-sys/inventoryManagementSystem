@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Table,
@@ -16,13 +16,16 @@ import {
   Button,
   Chip,
   Stack,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import { Search, Add, VisibilityOutlined, EditOutlined, DeleteOutlined, Download as DownloadIcon } from "@mui/icons-material";
 import CommonDialog from "@/components/CommonDialog";
-import CreateReceipt from "@/components/Damage Tracking/Receipts/Create";
-import ViewReceipt from "@/components/Damage Tracking/Receipts/View";
-import EditReceipt from "@/components/Damage Tracking/Receipts/Edit";
-import DeleteReceipt from "@/components/Damage Tracking/Receipts/Delete";
+import CreateReceipt from "@/components/damage-tracking/Receipts/Create";
+import ViewReceipt from "@/components/damage-tracking/Receipts/View";
+import EditReceipt from "@/components/damage-tracking/Receipts/Edit";
+import DeleteReceipt from "@/components/damage-tracking/Receipts/Delete";
+import { fetchDamageReceipts, createDamageReceipt, updateDamageReceipt, deleteDamageReceipt } from '../../../lib/damageApi';
 
 const AttachReceipts = () => {
   const [search, setSearch] = useState("");
@@ -39,45 +42,31 @@ const AttachReceipts = () => {
   const [deleteId, setDeleteId] = useState(null);
   const [deleteData, setDeleteData] = useState(null);
 
-  // Receipt data - simplified
-  const [receiptData, setReceiptData] = useState([
-    {
-      id: "RCP001",
-      receiptId: "RCP001",
-      damageId: "DMG001",
-      productName: "Samsung Galaxy S24",
-      receiptNumber: "RCP-2024-001",
-      receiptDate: "2024-09-18",
-      amount: 84000,
-      supplier: "Samsung India",
-      status: "Verified",
-      warehouse: "Main Warehouse"
-    },
-    {
-      id: "RCP002",
-      receiptId: "RCP002",
-      damageId: "DMG002",
-      productName: "Office Chair",
-      receiptNumber: "RCP-2024-002",
-      receiptDate: "2024-09-15",
-      amount: 10000,
-      supplier: "Furniture World",
-      status: "Pending",
-      warehouse: "North Warehouse"
-    },
-    {
-      id: "RCP003",
-      receiptId: "RCP003",
-      damageId: "DMG003",
-      productName: "Coffee Mug",
-      receiptNumber: "RCP-2024-003",
-      receiptDate: "2024-09-20",
-      amount: 2500,
-      supplier: "Kitchen Supplies",
-      status: "Verified",
-      warehouse: "South Warehouse"
+  // Real data from API
+  const [receiptData, setReceiptData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalItems: 0 });
+
+  // Fetch damage receipts from API
+  const loadReceiptData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetchDamageReceipts(page + 1, rowsPerPage);
+      setReceiptData(response.data || []);
+      setPagination(response.pagination || { currentPage: 1, totalPages: 1, totalItems: 0 });
+    } catch (err) {
+      setError(err.message || "Failed to fetch damage receipts");
+      console.error("Error fetching damage receipts:", err);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    loadReceiptData();
+  }, [page]);
 
   // Handlers
   const handleView = (row) => { setViewData(row); setViewShow(true); };
@@ -91,29 +80,40 @@ const AttachReceipts = () => {
   const handleCreateOpen = () => setCreateShow(true);
   const handleClose = () => { setViewShow(false); setEditShow(false); setDeleteShow(false); setCreateShow(false); };
 
-  const handleCreate = (newReceipt) => {
-    const nextId = receiptData.length + 1;
-    const newReceiptData = {
-      ...newReceipt,
-      id: `RCP${String(nextId).padStart(3, '0')}`
-    };
-    setReceiptData([...receiptData, newReceiptData]);
-    setCreateShow(false);
+  const handleCreate = async (newReceipt) => {
+    try {
+      await createDamageReceipt(newReceipt);
+      setCreateShow(false);
+      loadReceiptData();
+    } catch (err) {
+      console.error("Error creating receipt:", err);
+      alert(err.message || "Failed to create receipt");
+    }
   };
 
-  const handleUpdate = (updatedReceipt) => {
-    setReceiptData(receiptData.map(row => 
-      row.id === updatedReceipt.id 
-        ? { ...updatedReceipt }
-        : row
-    ));
+  const handleUpdate = async (updatedReceipt) => {
+    try {
+      await updateDamageReceipt(updatedReceipt.id, updatedReceipt);
+      setEditShow(false);
+      setEditData(null);
+      loadReceiptData();
+    } catch (err) {
+      console.error("Error updating receipt:", err);
+      alert(err.message || "Failed to update receipt");
+    }
   };
 
-  const handleDelete = () => {
-    setReceiptData(receiptData.filter(row => row.id !== deleteId));
-    setDeleteShow(false);
-    setDeleteData(null);
-    setDeleteId(null);
+  const handleDelete = async () => {
+    try {
+      await deleteDamageReceipt(deleteId);
+      setDeleteShow(false);
+      setDeleteData(null);
+      setDeleteId(null);
+      loadReceiptData();
+    } catch (err) {
+      console.error("Error deleting receipt:", err);
+      alert(err.message || "Failed to delete receipt");
+    }
   };
 
   const handleDownload = (row) => {
@@ -122,8 +122,8 @@ const AttachReceipts = () => {
       receiptNumber: row.receiptNumber || `RCP-${row.id}`,
       productName: row.productName,
       receiptDate: row.receiptDate,
-      amount: row.amount,
-      supplier: row.supplier,
+      amount: row.totalValue,
+      supplier: row.damageId?.damageType || 'N/A',
       status: row.status,
       warehouse: row.warehouse
     };
@@ -317,26 +317,30 @@ const AttachReceipts = () => {
     };
   };
 
-  // Filter data
-  const filteredData = receiptData.filter(row =>
-    row.productName.toLowerCase().includes(search.toLowerCase()) ||
-    row.supplier.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const currentPageData = filteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-
   const handlePageChange = (event, newPage) => {
     setPage(newPage - 1);
   };
 
+  // Filter data
+  const filteredData = receiptData.filter(row =>
+    row.productName?.toLowerCase().includes(search.toLowerCase()) ||
+    row.receiptNumber?.toLowerCase().includes(search.toLowerCase()) ||
+    row.receivedBy?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const currentPageData = filteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
   const getStatusColor = (status) => {
     switch (status) {
-      case "Verified":
+      case "Approved":
         return { backgroundColor: "#e8f5e8", color: "#2e7d32" };
-      case "Pending":
+      case "Submitted":
+      case "Under Review":
         return { backgroundColor: "#fff3e0", color: "#f57c00" };
       case "Rejected":
         return { backgroundColor: "#ffebee", color: "#d32f2f" };
+      case "Draft":
+        return { backgroundColor: "#e3f2fd", color: "#1976d2" };
       default:
         return { backgroundColor: "#f5f5f5", color: "#666" };
     }
@@ -375,97 +379,115 @@ const AttachReceipts = () => {
         </Button>
       </Box>
 
-      {/* Table */}
-      <Box sx={{ backgroundColor: 'white', borderRadius: 2, boxShadow: 1 }}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-              <TableCell sx={{ fontWeight: 'bold' }}>SI</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Product Name</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Receipt Date</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Amount</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Supplier</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Warehouse</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 'bold' }}>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {currentPageData.map((row, index) => (
-              <TableRow key={row.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
-                <TableCell>{page * rowsPerPage + index + 1}</TableCell>
-                <TableCell align="left">
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {row.productName}
-                  </Typography>
-                </TableCell>
-                <TableCell align="left">{row.receiptDate}</TableCell>
-                <TableCell align="left">₹{row.amount.toLocaleString()}</TableCell>
-                <TableCell align="left">{row.supplier}</TableCell>
-                <TableCell align="left">{row.warehouse}</TableCell>
-                <TableCell align="left">
-                  <Chip
-                    label={row.status}
-                    size="small"
-                    sx={{
-                      ...getStatusColor(row.status),
-                      fontWeight: 500
-                    }}
-                  />
-                </TableCell>
-                <TableCell align="center">
-                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleView(row)}
-                      sx={{ color: '#1976d2' }}
-                    >
-                      <VisibilityOutlined />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEdit(row)}
-                      sx={{ color: '#000' }}
-                    >
-                      <EditOutlined />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDownload(row)}
-                      sx={{ color: '#4caf50' }}
-                    >
-                      <DownloadIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleShowDelete(row.id)}
-                      sx={{ color: '#f44336' }}
-                    >
-                      <DeleteOutlined />
-                    </IconButton>
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Box>
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
-      {/* Pagination */}
-      <Box sx={{ padding: "0.75rem 1rem", borderTop: "1px solid #e5e5e5", backgroundColor: "#fafafa" }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="body2" sx={{ color: "#333", fontWeight: 500, fontSize: "0.875rem" }}>
-            Showing {page * rowsPerPage + 1} to {Math.min((page + 1) * rowsPerPage, filteredData.length)} of {filteredData.length} receipts
-          </Typography>
-          <Pagination
-            count={Math.ceil(filteredData.length / rowsPerPage)}
-            page={page + 1}
-            onChange={handlePageChange}
-            color="primary"
-            size="small"
-          />
-        </Stack>
-      </Box>
+      {/* Loading State */}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          {/* Table */}
+          <Box sx={{ backgroundColor: 'white', borderRadius: 2, boxShadow: 1 }}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                  <TableCell sx={{ fontWeight: 'bold' }}>SI</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Receipt Number</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Product Name</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Receipt Date</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Total Value</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Received By</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Warehouse</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {currentPageData.map((row, index) => (
+                  <TableRow key={row.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
+                    <TableCell>{page * rowsPerPage + index + 1}</TableCell>
+                    <TableCell align="left">
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {row.receiptNumber}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="left">{row.productName}</TableCell>
+                    <TableCell align="left">{row.receiptDate}</TableCell>
+                    <TableCell align="left">₹{row.totalValue?.toLocaleString()}</TableCell>
+                    <TableCell align="left">{row.receivedBy}</TableCell>
+                    <TableCell align="left">{row.warehouseName}</TableCell>
+                    <TableCell align="left">
+                      <Chip
+                        label={row.status}
+                        size="small"
+                        sx={{
+                          ...getStatusColor(row.status),
+                          fontWeight: 500
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleView(row)}
+                          sx={{ color: '#1976d2' }}
+                        >
+                          <VisibilityOutlined />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEdit(row)}
+                          sx={{ color: '#000' }}
+                        >
+                          <EditOutlined />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDownload(row)}
+                          sx={{ color: '#4caf50' }}
+                        >
+                          <DownloadIcon />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleShowDelete(row.id)}
+                          sx={{ color: '#f44336' }}
+                        >
+                          <DeleteOutlined />
+                        </IconButton>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+
+          {/* Pagination */}
+          <Box sx={{ padding: "0.75rem 1rem", borderTop: "1px solid #e5e5e5", backgroundColor: "#fafafa" }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="body2" sx={{ color: "#333", fontWeight: 500, fontSize: "0.875rem" }}>
+                Showing {page * rowsPerPage + 1} to {Math.min((page + 1) * rowsPerPage, filteredData.length)} of {filteredData.length} receipts
+              </Typography>
+              <Pagination
+                count={pagination.totalPages}
+                page={page + 1}
+                onChange={(_, newPage) => setPage(newPage - 1)}
+                color="primary"
+                size="small"
+              />
+            </Stack>
+          </Box>
+        </>
+      )}
 
       {/* Common Dialog */}
       <CommonDialog

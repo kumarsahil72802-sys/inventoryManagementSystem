@@ -347,11 +347,17 @@ export const deleteCategory = async (req, res) => {
 // Get all subcategories with pagination
 export const getAllSubcategories = async (req, res) => {
   try {
-    const { page, limit } = getPaginationParams(req.query);
+    const { page, limit, category } = req.query;
+    
+    // Build filter object
+    const filter = {};
+    if (category) {
+      filter.category = category;
+    }
     
     const { data, pagination } = await executePaginatedQuery(
       SubcategoryModel,
-      {},
+      filter,
       {
         populate: [{ path: 'category' }],
         sort: { sortOrder: 1 }

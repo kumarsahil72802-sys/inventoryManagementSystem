@@ -8,7 +8,11 @@ import {
   Select,
   MenuItem,
   Button,
+  CircularProgress,
+  Box,
 } from "@mui/material";
+import { getAllSalesOrders } from '../../../lib/salesApi';
+import { fetchCustomers } from '../../../lib/customerApi';
 
 const EditDeliveryChallan = ({ editData, handleUpdate, handleClose }) => {
   const [formData, setFormData] = useState({
@@ -20,9 +24,40 @@ const EditDeliveryChallan = ({ editData, handleUpdate, handleClose }) => {
     status: "Pending"
   });
 
-  const orderIds = ["SO001", "SO002", "SO003", "SO004", "SO005"];
-  const customers = ["ABC Electronics", "XYZ Furniture", "Tech Solutions", "Global Corp", "Prime Industries"];
+  const [orders, setOrders] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const statuses = ["Pending", "In Transit", "Delivered"];
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [ordersRes, customersRes] = await Promise.all([
+          getAllSalesOrders(),
+          fetchCustomers(1, 100)
+        ]);
+        
+        // Extract orders data - handle different response structures
+        const ordersData = ordersRes?.data || ordersRes || [];
+        setOrders(ordersData);
+        
+        // Extract customers data
+        const customersData = customersRes?.data || customersRes || [];
+        setCustomers(customersData);
+        
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+        setError('Failed to load data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   useEffect(() => {
     if (editData) {
@@ -41,6 +76,22 @@ const EditDeliveryChallan = ({ editData, handleUpdate, handleClose }) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 3 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3, color: 'error.main' }}>
+        {error}
+      </Box>
+    );
+  }
 
   const handleSave = () => {
     if (!formData.orderId || !formData.customerName || !formData.deliveryDate || !formData.deliveryAddress) {
@@ -61,9 +112,9 @@ const EditDeliveryChallan = ({ editData, handleUpdate, handleClose }) => {
             value={formData.orderId}
             onChange={handleChange}
           >
-            {orderIds.map((orderId) => (
-              <MenuItem key={orderId} value={orderId}>
-                {orderId}
+            {orders.map((order) => (
+              <MenuItem key={order.id || order._id} value={order.salesOrderId || order.orderNumber || order.id}>
+                {order.salesOrderId || order.orderNumber || order.id}
               </MenuItem>
             ))}
           </Select>
@@ -78,8 +129,8 @@ const EditDeliveryChallan = ({ editData, handleUpdate, handleClose }) => {
             onChange={handleChange}
           >
             {customers.map((customer) => (
-              <MenuItem key={customer} value={customer}>
-                {customer}
+              <MenuItem key={customer.id || customer._id || customer.customerName} value={customer.customerName || customer.name}>
+                {customer.customerName || customer.name}
               </MenuItem>
             ))}
           </Select>

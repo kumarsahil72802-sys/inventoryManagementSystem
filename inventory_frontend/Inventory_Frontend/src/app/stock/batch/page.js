@@ -19,10 +19,10 @@ import {
 } from "@mui/material";
 import { Search, Add, VisibilityOutlined, EditOutlined, DeleteOutlined } from "@mui/icons-material";
 import CommonDialog from '../../../components/CommonDialog';
-import CreateBatch from '../../../components/Stock Management/Batch/Create';
-import EditBatch from '../../../components/Stock Management/Batch/Edit';
-import ViewBatch from '../../../components/Stock Management/Batch/View';
-import DeleteBatch from '../../../components/Stock Management/Batch/Delete';
+import CreateBatch from '../../../components/stock-management-main/Batch/Create';
+import EditBatch from '../../../components/stock-management-main/Batch/Edit';
+import ViewBatch from '../../../components/stock-management-main/Batch/View';
+import DeleteBatch from '../../../components/stock-management-main/Batch/Delete';
 
 import { fetchStockBatches, createStockBatch, updateStockBatch, deleteStockBatch } from '@/lib/stockApi';
 import { fetchItems } from '@/lib/itemApi';

@@ -8,7 +8,13 @@ import {
   Select,
   MenuItem,
   Button,
+  CircularProgress,
+  Box,
 } from "@mui/material";
+import { getAllSalesOrders } from '../../../lib/salesApi';
+import { fetchCustomers } from '../../../lib/customerApi';
+import { fetchItems } from '../../../lib/itemApi';
+import { fetchWarehouses } from '../../../lib/warehouseApi';
 
 const EditOrderTracking = ({ editData, handleUpdate, handleClose }) => {
   const [formData, setFormData] = useState({
@@ -23,11 +29,52 @@ const EditOrderTracking = ({ editData, handleUpdate, handleClose }) => {
     notes: ""
   });
 
-  const orderIds = ["SO001", "SO002", "SO003", "SO004", "SO005"];
-  const customers = ["ABC Electronics", "XYZ Furniture", "Tech Solutions", "Global Corp", "Prime Industries"];
-  const products = ["Samsung Galaxy S24", "Office Chair", "LED TV 43", "Wireless Mouse", "Keyboard", "Monitor 24"];
-  const warehouses = ["Main Warehouse", "North Warehouse", "South Warehouse", "East Warehouse", "West Warehouse"];
+  const [orders, setOrders] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [warehouses, setWarehouses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const statuses = ["Processing", "In Transit", "Out for Delivery", "Delivered"];
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [ordersRes, customersRes, productsRes, warehousesRes] = await Promise.all([
+          getAllSalesOrders(),
+          fetchCustomers(1, 100),
+          fetchItems(1, 100),
+          fetchWarehouses()
+        ]);
+        
+        // Extract orders data - handle different response structures
+        const ordersData = ordersRes?.data || ordersRes || [];
+        setOrders(ordersData);
+        
+        // Extract customers data
+        const customersData = customersRes?.data || customersRes || [];
+        setCustomers(customersData);
+        
+        // Extract products data
+        const productsData = productsRes?.data || productsRes || [];
+        setProducts(productsData);
+        
+        // Extract warehouses data
+        const warehousesData = Array.isArray(warehousesRes) ? warehousesRes : (warehousesRes?.data || []);
+        setWarehouses(warehousesData);
+        
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+        setError('Failed to load data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   useEffect(() => {
     if (editData) {
@@ -50,6 +97,22 @@ const EditOrderTracking = ({ editData, handleUpdate, handleClose }) => {
     setFormData({ ...formData, [name]: value });
   };
 
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 3 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3, color: 'error.main' }}>
+        {error}
+      </Box>
+    );
+  }
+
   const handleSave = () => {
     if (!formData.orderId || !formData.orderDate || !formData.customerName || !formData.productName || !formData.quantityOrdered || !formData.estimatedDelivery || !formData.warehouse || !formData.currentStatus) {
       alert('Please fill all required fields');
@@ -69,9 +132,9 @@ const EditOrderTracking = ({ editData, handleUpdate, handleClose }) => {
             value={formData.orderId}
             onChange={handleChange}
           >
-            {orderIds.map((orderId) => (
-              <MenuItem key={orderId} value={orderId}>
-                {orderId}
+            {orders.map((order) => (
+              <MenuItem key={order.id || order._id} value={order.salesOrderId || order.orderNumber || order.id}>
+                {order.salesOrderId || order.orderNumber || order.id}
               </MenuItem>
             ))}
           </Select>
@@ -98,8 +161,8 @@ const EditOrderTracking = ({ editData, handleUpdate, handleClose }) => {
             onChange={handleChange}
           >
             {customers.map((customer) => (
-              <MenuItem key={customer} value={customer}>
-                {customer}
+              <MenuItem key={customer.id || customer._id || customer.customerName} value={customer.customerName || customer.name}>
+                {customer.customerName || customer.name}
               </MenuItem>
             ))}
           </Select>
@@ -114,8 +177,8 @@ const EditOrderTracking = ({ editData, handleUpdate, handleClose }) => {
             onChange={handleChange}
           >
             {products.map((product) => (
-              <MenuItem key={product} value={product}>
-                {product}
+              <MenuItem key={product.id || product._id || product.productName} value={product.productName || product.name}>
+                {product.productName || product.name}
               </MenuItem>
             ))}
           </Select>
@@ -153,8 +216,8 @@ const EditOrderTracking = ({ editData, handleUpdate, handleClose }) => {
             onChange={handleChange}
           >
             {warehouses.map((warehouse) => (
-              <MenuItem key={warehouse} value={warehouse}>
-                {warehouse}
+              <MenuItem key={warehouse.id || warehouse._id || warehouse.warehouseName} value={warehouse.warehouseName || warehouse.name}>
+                {warehouse.warehouseName || warehouse.name}
               </MenuItem>
             ))}
           </Select>

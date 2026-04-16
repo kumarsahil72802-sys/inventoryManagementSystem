@@ -9,6 +9,8 @@ import {
   MenuItem,
   Button,
 } from "@mui/material";
+import { fetchCustomers } from '../../../lib/customerApi';
+import { fetchItems } from '../../../lib/itemApi';
 
 const EditSalesReturn = ({ editData, handleUpdate, handleClose }) => {
   const [formData, setFormData] = useState({
@@ -23,10 +25,26 @@ const EditSalesReturn = ({ editData, handleUpdate, handleClose }) => {
     status: "Pending"
   });
 
-  const customers = ["ABC Electronics", "XYZ Furniture", "Tech Solutions", "Global Corp", "Prime Industries"];
-  const products = ["Samsung Galaxy S24", "Office Chair", "LED TV 43", "Wireless Mouse", "Keyboard", "Monitor 24"];
+  const [customers, setCustomers] = useState([]);
+  const [products, setProducts] = useState([]);
   const reasons = ["Defective Product", "Wrong Item", "Customer Request", "Quality Issues", "Damaged in Transit"];
   const statuses = ["Pending", "Approved", "Processed", "Rejected"];
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [customersRes, productsRes] = await Promise.all([
+          fetchCustomers(),
+          fetchItems(1, 100)
+        ]);
+        setCustomers(customersRes.data || []);
+        setProducts(productsRes.data || []);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+      }
+    };
+    loadData();
+  }, []);
 
   useEffect(() => {
     if (editData) {
@@ -90,8 +108,8 @@ const EditSalesReturn = ({ editData, handleUpdate, handleClose }) => {
             onChange={handleChange}
           >
             {customers.map((customer) => (
-              <MenuItem key={customer} value={customer}>
-                {customer}
+              <MenuItem key={customer.id || customer._id || customer.customerName} value={customer.customerName || customer.name}>
+                {customer.customerName || customer.name}
               </MenuItem>
             ))}
           </Select>
@@ -106,8 +124,8 @@ const EditSalesReturn = ({ editData, handleUpdate, handleClose }) => {
             onChange={handleChange}
           >
             {products.map((product) => (
-              <MenuItem key={product} value={product}>
-                {product}
+              <MenuItem key={product.id || product._id} value={product.productName || product.name}>
+                {product.productName || product.name}
               </MenuItem>
             ))}
           </Select>
