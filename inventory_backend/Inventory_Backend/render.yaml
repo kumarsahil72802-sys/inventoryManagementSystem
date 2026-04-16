@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: inventory-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGINS
+        scope: run
+        sync: false
+      - key: MONGODB_URI
+        scope: run
+        sync: false
+      - key: JWT_SECRET
+        scope: run
+        sync: false
+      - key: CLOUDINARY_NAME
+        scope: run
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        scope: run
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        scope: run
+        sync: false
+    region: oregon
+    healthCheckPath: /api/health
+    autoDeploy: true

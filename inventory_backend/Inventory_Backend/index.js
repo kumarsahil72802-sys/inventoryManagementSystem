@@ -36,6 +36,11 @@ app.use(express.urlencoded({ extended: true }));
 
 connectDB();
 
+// Health check endpoint for Render/monitoring
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 app.use('/api', routes);
 
 app.listen(PORT, () => {
