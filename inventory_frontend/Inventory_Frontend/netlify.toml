@@ -10,9 +10,6 @@
 [functions]
   node_bundler = "esbuild"
 
-[context.production]
-  environment = { NEXT_PUBLIC_API_URL = "https://your-backend-domain.onrender.com/api" }
-
 [[headers]]
   for = "/*"
   [headers.values]
