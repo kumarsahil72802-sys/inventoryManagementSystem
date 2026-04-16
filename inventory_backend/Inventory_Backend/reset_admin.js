@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -32,7 +33,9 @@ async function resetPassword() {
         });
         console.log('Connected to MongoDB');
 
-        const hashedPassword = await bcrypt.hash('admin', 10);
+        // Generate secure random password
+        const initialPassword = crypto.randomBytes(16).toString('hex').substring(0, 12);
+        const hashedPassword = await bcrypt.hash(initialPassword, 10);
         
         const result = await AdminModel.updateOne(
             { email: 'superadmin@gmail.com' },
@@ -41,10 +44,15 @@ async function resetPassword() {
         );
 
         if (result.upsertedCount > 0) {
-            console.log('Admin user created with password: admin');
+            console.log('✅ Admin user created successfully');
         } else {
-            console.log('Admin password reset successfully to: admin');
+            console.log('✅ Admin password reset successfully');
         }
+        
+        console.log('\n🔐 IMPORTANT: Initial Admin Password (store this safely):');
+        console.log(`Password: ${initialPassword}`);
+        console.log('\n⚠️  CHANGE THIS PASSWORD IMMEDIATELY after first login!');
+        console.log('Email: superadmin@gmail.com');
 
         await mongoose.connection.close();
         process.exit(0);
