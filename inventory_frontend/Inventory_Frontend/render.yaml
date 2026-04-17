@@ -9,8 +9,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_API_URL
-        scope: run
-        sync: false
+        value: https://inventorymanagementsystem-latest-fri0.onrender.com/api
     region: oregon
     healthCheckPath: /
     autoDeploy: true
