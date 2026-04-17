@@ -14,7 +14,7 @@
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
-    "cloudinary": "^1.41.3",
+    "cloudinary": "^2.9.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
@@ -23,7 +23,7 @@
     "mongodb": "^6.20.0",
     "mongoose": "^8.18.2",
     "multer": "^2.0.2",
-    "multer-storage-cloudinary": "^4.0.0",
+    "multer-storage-cloudinary": "^2.2.1",
     "nodemon": "^3.1.10",
     "serverless-http": "^4.0.0"
   }
