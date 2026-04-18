@@ -113,6 +113,12 @@ a {
 .sidebar--collapsed {
   width: var(--sidebar-mini);
   min-width: var(--sidebar-mini);
+  overflow: visible;
+  z-index: 101;
+}
+
+.sidebar--collapsed .menu-container {
+  overflow: visible;
 }
 
 /* ── Logo area ── */
@@ -197,6 +203,7 @@ a {
   width: 100%;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 /* ── Menu link / row ── */
@@ -320,7 +327,17 @@ a {
   max-height: 800px;
 }
 
+/* Show submenu on hover over parent menu item */
+.menu-item:hover .submenu {
+  max-height: 800px;
+}
+
 .sidebar--collapsed .submenu {
+  max-height: 0 !important;
+  display: none;
+}
+
+.sidebar--collapsed .menu-item:hover .submenu {
   max-height: 0 !important;
   display: none;
 }
@@ -359,6 +376,174 @@ a {
 
 .submenu-link.active .submenu-dot {
   opacity: 1;
+}
+
+/* ── Collapsed Sidebar Flyout Menu ── */
+.submenu-flyout {
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 0;
+  min-width: 220px;
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  z-index: 1001;
+  overflow: hidden;
+  /* Animation properties */
+  opacity: 0;
+  transform: translateX(-10px);
+  animation: flyout-slide-in 0.2s ease forwards;
+  pointer-events: auto;
+}
+
+/* Invisible bridge to connect menu item and flyout */
+.submenu-flyout::after {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 0;
+  width: 12px;
+  height: 100%;
+  background: transparent;
+  pointer-events: auto;
+}
+
+/* Flyout slide-in animation */
+@keyframes flyout-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Flyout slide-out animation */
+.submenu-flyout.flyout-exit {
+  animation: flyout-slide-out 0.15s ease forwards;
+}
+
+@keyframes flyout-slide-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+
+/* Flyout positioning - aligned with menu item */
+.sidebar--collapsed .menu-item {
+  position: relative;
+}
+
+/* Highlight hovered menu item in collapsed state */
+.sidebar--collapsed .menu-item--hovered .menu-link {
+  background: #f0f4ff;
+  color: var(--primary);
+  border-left-color: var(--primary-light);
+}
+
+.submenu-flyout-header {
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.submenu-flyout-header::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  background: var(--primary);
+  border-radius: 2px;
+}
+
+.submenu-flyout-content {
+  padding: 4px 0;
+}
+
+.submenu-flyout-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background var(--transition), color var(--transition), padding-left var(--transition);
+  white-space: nowrap;
+  margin: 2px 4px;
+  border-radius: 4px;
+}
+
+.submenu-flyout-link:hover {
+  background: var(--primary-bg);
+  color: var(--primary);
+  padding-left: 20px;
+}
+
+.submenu-flyout-link.active {
+  color: var(--primary);
+  font-weight: 600;
+  background: var(--primary-bg);
+}
+
+.submenu-flyout-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+  opacity: 0.45;
+  transition: opacity var(--transition), transform var(--transition);
+}
+
+.submenu-flyout-link:hover .submenu-flyout-dot {
+  opacity: 0.8;
+  transform: scale(1.2);
+}
+
+.submenu-flyout-link.active .submenu-flyout-dot {
+  opacity: 1;
+  background: var(--primary);
+}
+
+/* Collapsed menu item active state enhancement */
+.sidebar--collapsed .menu-item--active .menu-link {
+  background: var(--primary-bg);
+  color: var(--primary);
+  border-left-color: var(--primary);
+}
+
+/* Tooltip-like arrow for flyout */
+.submenu-flyout::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 16px;
+  width: 10px;
+  height: 10px;
+  background: var(--bg-white);
+  border-left: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  transform: rotate(45deg);
+  z-index: -1;
+}
+
+.submenu-flyout-header + .submenu-flyout-content::before {
+  display: none;
 }
 
 /* ════════════════════════════════════════════════════════

@@ -372,17 +372,19 @@
 // export default Sidebar;
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { KeyboardArrowDown, Menu as MenuIcon } from "@mui/icons-material";
 import { IconButton } from "@mui/material";
 import MenuItems from "./Menuitem";
 
 const Sidebar = ({ collapsed = false, onToggleSidebar }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const [openIndex, setOpenIndex] = useState(null);
   const [activeSubItem, setActiveSubItem] = useState(null);
+  const [hoveredIndex, setHoveredIndex] = useState(null);
 
   useEffect(() => {
     if (!pathname) return;
@@ -407,10 +409,56 @@ const Sidebar = ({ collapsed = false, onToggleSidebar }) => {
     setActiveSubItem(activeSubModule);
   }, [pathname]);
 
-  const toggleMenu = (index) => {
+  const toggleMenu = useCallback((index, item) => {
     if (collapsed) return;
-    setOpenIndex((prev) => (prev === index ? null : index));
-  };
+
+    // If clicking same menu, just toggle close
+    if (openIndex === index) {
+      setOpenIndex(null);
+      return;
+    }
+
+    // Open the menu
+    setOpenIndex(index);
+
+    // Navigate to first sub-item if available
+    if (item.item && item.item.length > 0) {
+      const firstSub = item.item[0];
+      router.push(firstSub.href);
+      setActiveSubItem(firstSub.href);
+    }
+  }, [collapsed, openIndex, router]);
+
+  // Handle main icon click when sidebar is collapsed
+  const handleCollapsedMainClick = useCallback((item) => {
+    if (!collapsed) return;
+
+    if (item.item && item.item.length > 0) {
+      // Has submenus - navigate to first submenu
+      const firstSub = item.item[0];
+      router.push(firstSub.href);
+      setActiveSubItem(firstSub.href);
+    } else if (item.href) {
+      // Direct route - navigate to main page
+      router.push(item.href);
+    }
+  }, [collapsed, router]);
+
+  // Handle mouse enter on menu item (for collapsed sidebar flyout)
+  const handleMouseEnter = useCallback((index) => {
+    setHoveredIndex(index);
+  }, []);
+
+  // Handle mouse leave on menu item
+  const handleMouseLeave = useCallback(() => {
+    setHoveredIndex(null);
+  }, []);
+
+  // Handle submenu item click
+  const handleSubmenuClick = useCallback((href) => {
+    setActiveSubItem(href);
+    setHoveredIndex(null);
+  }, []);
 
   return (
     <aside className={`sidebar${collapsed ? " sidebar--collapsed" : ""}`}>
@@ -437,18 +485,27 @@ const Sidebar = ({ collapsed = false, onToggleSidebar }) => {
       <nav className="menu-container">
         {MenuItems.map((item, index) => {
           const isOpen = openIndex === index && !collapsed;
-          const isActive = item.href
-            ? pathname === item.href
-            : item.item?.some((sub) => sub.href === pathname);
+          const isActive = item.href && pathname
+            ? pathname === item.href || pathname.startsWith(item.href + '/')
+            : item.item?.some((sub) => pathname === sub.href);
+          const isHovered = hoveredIndex === index;
+          const showFlyout = collapsed && item.item && isHovered;
 
           return (
-            <div key={index} className="menu-item">
+            <div
+              key={index}
+              className={`menu-item${isActive ? " menu-item--active" : ""}${isHovered ? " menu-item--hovered" : ""}`}
+              onMouseEnter={() => handleMouseEnter(index)}
+              onMouseLeave={handleMouseLeave}
+            >
 
               {item.item ? (
                 <div
                   className={`menu-link${isActive ? " active" : ""}`}
-                  onClick={() => toggleMenu(index)}
+                  onClick={() => collapsed ? handleCollapsedMainClick(item) : toggleMenu(index, item)}
                   title={collapsed ? item.label : undefined}
+                  role="button"
+                  tabIndex={0}
                 >
                   <div className="menu-left">
                     {item.icon && (
@@ -463,7 +520,7 @@ const Sidebar = ({ collapsed = false, onToggleSidebar }) => {
               ) : (
                 <Link
                   href={item.href}
-                  className={`menu-link${pathname === item.href ? " active" : ""}`}
+                  className={`menu-link${isActive ? " active" : ""}`}
                   title={collapsed ? item.label : undefined}
                 >
                   <div className="menu-left">
@@ -477,6 +534,7 @@ const Sidebar = ({ collapsed = false, onToggleSidebar }) => {
                 </Link>
               )}
 
+              {/* Expanded sidebar submenu */}
               {item.item && (
                 <div className={`submenu${isOpen ? " submenu--open" : ""}`}>
                   {item.item.map((subItem, subIndex) => (
@@ -489,6 +547,30 @@ const Sidebar = ({ collapsed = false, onToggleSidebar }) => {
                       <span className="submenu-text">{subItem.label}</span>
                     </Link>
                   ))}
+                </div>
+              )}
+
+              {/* Collapsed sidebar flyout popup */}
+              {showFlyout && (
+                <div
+                  className="submenu-flyout"
+                  onMouseEnter={() => handleMouseEnter(index)}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <div className="submenu-flyout-header">{item.label}</div>
+                  <div className="submenu-flyout-content">
+                    {item.item.map((subItem, subIndex) => (
+                      <Link
+                        key={subIndex}
+                        href={subItem.href}
+                        className={`submenu-flyout-link${activeSubItem === subItem.href ? " active" : ""}`}
+                        onClick={() => handleSubmenuClick(subItem.href)}
+                      >
+                        <span className="submenu-flyout-dot" />
+                        <span>{subItem.label}</span>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               )}
 
