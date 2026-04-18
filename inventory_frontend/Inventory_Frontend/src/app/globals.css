@@ -164,6 +164,22 @@ a {
 .sidebar--collapsed .sidebar-logo-full { display: none; }
 .sidebar--collapsed .sidebar-logo-mini { display: flex; }
 
+/* Sidebar toggle button */
+.sidebar-toggle-btn {
+  margin-left: auto;
+  color: var(--text-secondary) !important;
+  transition: color var(--transition);
+}
+
+.sidebar-toggle-btn:hover {
+  color: var(--primary) !important;
+  background: var(--primary-bg) !important;
+}
+
+.sidebar--collapsed .sidebar-toggle-btn {
+  margin-left: 0;
+}
+
 /* ── Nav scroll area ── */
 .menu-container {
   flex: 1;

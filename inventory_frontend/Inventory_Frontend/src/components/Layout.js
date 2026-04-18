@@ -76,9 +76,9 @@ export default function Layout({ children }) {
   // Authenticated - show full layout with sidebar
   return (
     <div className="app-container">
-      <Sidebar collapsed={sidebarCollapsed} />
+      <Sidebar collapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed((prev) => !prev)} />
       <div className="main-content">
-        <Header onToggleSidebar={() => setSidebarCollapsed((prev) => !prev)} />
+        <Header />
         <main className="content-area">{children}</main>
       </div>
     </div>

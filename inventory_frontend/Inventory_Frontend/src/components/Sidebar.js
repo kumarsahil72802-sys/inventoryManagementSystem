@@ -375,10 +375,11 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { KeyboardArrowDown } from "@mui/icons-material";
+import { KeyboardArrowDown, Menu as MenuIcon } from "@mui/icons-material";
+import { IconButton } from "@mui/material";
 import MenuItems from "./Menuitem";
 
-const Sidebar = ({ collapsed = false }) => {
+const Sidebar = ({ collapsed = false, onToggleSidebar }) => {
   const pathname = usePathname();
   const [openIndex, setOpenIndex] = useState(null);
   const [activeSubItem, setActiveSubItem] = useState(null);
@@ -422,6 +423,14 @@ const Sidebar = ({ collapsed = false }) => {
         <div className="sidebar-logo-mini">
           <img src="/logo.png" alt="Logo" className="sidebar-logo-mini-img" />
         </div>
+        <IconButton
+          onClick={onToggleSidebar}
+          size="small"
+          className="sidebar-toggle-btn"
+          aria-label="Toggle sidebar"
+        >
+          <MenuIcon />
+        </IconButton>
       </div>
 
       {/* ── Nav ── */}

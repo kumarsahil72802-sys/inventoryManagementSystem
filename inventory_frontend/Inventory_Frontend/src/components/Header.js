@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Person, Menu as MenuIcon } from '@mui/icons-material';
+import { Person } from '@mui/icons-material';
 import { usePathname, useRouter } from 'next/navigation';
-import { Button, IconButton } from '@mui/material';
+import { Button } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 
-const Header = ({ onToggleSidebar }) => {
+const Header = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -49,14 +49,6 @@ const Header = ({ onToggleSidebar }) => {
   return (
     <header className="header">
       <div className="header-left">
-        <IconButton
-          onClick={onToggleSidebar}
-          size="small"
-          sx={{ mr: 1.5, color: 'inherit' }}
-          aria-label="Toggle sidebar"
-        >
-          <MenuIcon />
-        </IconButton>
         <h1 className="page-title">{headerTitle()}</h1>
       </div>
 
